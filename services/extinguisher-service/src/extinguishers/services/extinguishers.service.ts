@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -7,11 +8,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ExtinguisherFilterOptions } from '../dtos/list-extinguishers-query.dto';
 import { CreateExtinguisherDto } from '../dtos/create-extinguisher.dto';
-import { ScheduleInspectionDto, UpdateInspectionDto } from '../dtos/inspection.dto';
+import {
+  AdminReviewInspectionDto,
+  ScheduleInspectionDto,
+  SubmitInspectionReportDto,
+  UpdateInspectionDto,
+} from '../dtos/inspection.dto';
 import { LogMaintenanceDto } from '../dtos/maintenance.dto';
 import { RenewExtinguisherDto } from '../dtos/update-extinguisher.dto';
 import { UpdateExtinguisherDto } from '../dtos/update-extinguisher.dto';
-import { ExtinguisherInspection } from '../entities/extinguisher-inspection.entity';
+import { ExtinguisherInspection, InspectionStatus } from '../entities/extinguisher-inspection.entity';
 import { ExtinguisherStatus } from '../entities/extinguisher-status.enum';
 import { FireExtinguisher } from '../entities/fire-extinguisher.entity';
 import { MaintenanceLog } from '../entities/maintenance-log.entity';
@@ -67,6 +73,11 @@ export class ExtinguishersService {
   ) {}
 
   async create(dto: CreateExtinguisherDto, createdBy?: string): Promise<FireExtinguisher> {
+    const existing = await this.extinguishersRepo.findBySerialNumber(dto.serialNumber);
+    if (existing) {
+      throw new ConflictException('Fire extinguisher serial number already exists');
+    }
+
     const status = dto.status ?? computeExtinguisherStatus(dto.expiryDate);
     const extinguisher = this.extinguishersRepo.create({
       ...dto,
@@ -146,6 +157,10 @@ export class ExtinguishersService {
     const extinguisher = await this.findById(id);
 
     if (dto.serialNumber !== undefined) {
+      const existing = await this.extinguishersRepo.findBySerialNumber(dto.serialNumber);
+      if (existing && existing.id !== id) {
+        throw new ConflictException('Fire extinguisher serial number already exists');
+      }
       extinguisher.serialNumber = dto.serialNumber;
     }
     if (dto.type !== undefined) extinguisher.type = dto.type;
@@ -194,6 +209,21 @@ export class ExtinguishersService {
     requestedBy: string,
   ): Promise<ExtinguisherInspection> {
     await this.findById(extinguisherId);
+    const activeStatuses = [
+      InspectionStatus.PENDING,
+      InspectionStatus.IN_PROGRESS,
+      InspectionStatus.COMPLETED_PENDING_ADMIN_REVIEW,
+      InspectionStatus.REQUIRES_MAINTENANCE,
+    ];
+    const existingActive = await this.inspectionsRepo
+      .createQueryBuilder('i')
+      .where('i.extinguisherId = :extinguisherId', { extinguisherId })
+      .andWhere('i.status IN (:...activeStatuses)', { activeStatuses })
+      .getOne();
+    if (existingActive) {
+      throw new ConflictException('This extinguisher already has an active inspection request');
+    }
+
     const inspection = this.inspectionsRepo.create({
       extinguisherId,
       scheduledAt: new Date(dto.scheduledAt),
@@ -208,11 +238,29 @@ export class ExtinguishersService {
     page: number,
     limit: number,
     extinguisherId?: string,
+    status?: InspectionStatus,
+    inspectorId?: string,
+    activeOnly = false,
   ): Promise<PaginatedResult<ExtinguisherInspection>> {
     const qb = this.inspectionsRepo
       .createQueryBuilder('i')
       .orderBy('i.scheduledAt', 'DESC');
     if (extinguisherId) qb.andWhere('i.extinguisherId = :extinguisherId', { extinguisherId });
+    if (status) {
+      qb.andWhere('i.status = :status', { status });
+    } else if (activeOnly) {
+      qb.andWhere('i.status IN (:...activeStatuses)', {
+        activeStatuses: [
+          InspectionStatus.PENDING,
+          InspectionStatus.IN_PROGRESS,
+          InspectionStatus.COMPLETED_PENDING_ADMIN_REVIEW,
+          InspectionStatus.REQUIRES_MAINTENANCE,
+        ],
+      });
+    }
+    if (inspectorId) {
+      qb.andWhere('(i.inspectorId IS NULL OR i.inspectorId = :inspectorId)', { inspectorId });
+    }
     const [data, total] = await qb.skip((page - 1) * limit).take(limit).getManyAndCount();
     return paginate(data, total, page, limit);
   }
@@ -223,6 +271,42 @@ export class ExtinguishersService {
     if (dto.status !== undefined) inspection.status = dto.status;
     if (dto.inspectorId !== undefined) inspection.inspectorId = dto.inspectorId;
     if (dto.notes !== undefined) inspection.notes = dto.notes;
+    return this.inspectionsRepo.save(inspection);
+  }
+
+  async startInspection(id: string, inspectorId: string): Promise<ExtinguisherInspection> {
+    const inspection = await this.inspectionsRepo.findOne({ where: { id } });
+    if (!inspection) throw new NotFoundException('Inspection not found');
+    inspection.status = InspectionStatus.IN_PROGRESS;
+    inspection.inspectorId = inspectorId;
+    return this.inspectionsRepo.save(inspection);
+  }
+
+  async submitInspectionReport(
+    id: string,
+    dto: SubmitInspectionReportDto,
+    inspectorId: string,
+  ): Promise<ExtinguisherInspection> {
+    const inspection = await this.inspectionsRepo.findOne({ where: { id } });
+    if (!inspection) throw new NotFoundException('Inspection not found');
+    inspection.inspectorId = inspectorId;
+    inspection.reportCondition = dto.condition;
+    inspection.reportNotes = dto.notes ?? null;
+    inspection.actionsTaken = dto.actionsTaken;
+    inspection.result = dto.result;
+    inspection.inspectionDate = dto.inspectionDate;
+    inspection.status = InspectionStatus.COMPLETED_PENDING_ADMIN_REVIEW;
+    return this.inspectionsRepo.save(inspection);
+  }
+
+  async reviewInspection(
+    id: string,
+    dto: AdminReviewInspectionDto,
+  ): Promise<ExtinguisherInspection> {
+    const inspection = await this.inspectionsRepo.findOne({ where: { id } });
+    if (!inspection) throw new NotFoundException('Inspection not found');
+    inspection.status = dto.status;
+    inspection.adminReviewNotes = dto.notes ?? null;
     return this.inspectionsRepo.save(inspection);
   }
 

@@ -117,6 +117,16 @@ async function seedExtinguishers(adminId, customerIds) {
   await client.query(`ALTER TABLE fire_extinguishers ADD COLUMN IF NOT EXISTS size VARCHAR(50) DEFAULT '5lbs'`);
   await client.query(`ALTER TABLE fire_extinguishers ADD COLUMN IF NOT EXISTS installation_date DATE DEFAULT CURRENT_DATE`);
   await client.query(`ALTER TABLE fire_extinguishers ALTER COLUMN customer_id DROP NOT NULL`);
+  await client.query(`
+    WITH duplicates AS (
+      SELECT id, serial_number, ROW_NUMBER() OVER (PARTITION BY serial_number ORDER BY created_at, id) AS rn
+      FROM fire_extinguishers
+    )
+    UPDATE fire_extinguishers f
+    SET serial_number = f.serial_number || '-DUP-' || duplicates.rn
+    FROM duplicates
+    WHERE f.id = duplicates.id AND duplicates.rn > 1
+  `);
 
   const today = new Date();
   const addDays = (d) => {

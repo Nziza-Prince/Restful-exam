@@ -71,11 +71,18 @@ export interface FireExtinguisher {
   expiryDate: string;
   status: ExtinguisherStatus;
   customerId: string;
+  customer?: Pick<Customer, 'id' | 'fullName' | 'email'> | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export type InspectionStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+export type InspectionStatus =
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED_PENDING_ADMIN_REVIEW'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'REQUIRES_MAINTENANCE';
 
 export interface ExtinguisherInspection {
   id: string;
@@ -85,6 +92,17 @@ export interface ExtinguisherInspection {
   inspectorId: string | null;
   status: InspectionStatus;
   notes: string | null;
+  reportCondition: string | null;
+  reportNotes: string | null;
+  actionsTaken: string | null;
+  result: string | null;
+  inspectionDate: string | null;
+  adminReviewNotes: string | null;
+  extinguisher?: Pick<
+    FireExtinguisher,
+    'id' | 'serialNumber' | 'type' | 'location' | 'size' | 'expiryDate' | 'status' | 'customerId'
+  >;
+  customer?: Pick<Customer, 'id' | 'fullName' | 'email'> | null;
   createdAt: string;
   updatedAt: string;
 }

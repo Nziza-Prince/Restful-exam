@@ -33,6 +33,19 @@ export interface UpdateInspectionPayload {
   notes?: string;
 }
 
+export interface SubmitInspectionReportPayload {
+  condition: string;
+  notes?: string;
+  actionsTaken: string;
+  result: string;
+  inspectionDate: string;
+}
+
+export interface AdminReviewInspectionPayload {
+  status: Extract<InspectionStatus, 'APPROVED' | 'REJECTED' | 'REQUIRES_MAINTENANCE'>;
+  notes?: string;
+}
+
 export interface LogMaintenancePayload {
   actionsTaken: string;
   actionDate: string;
@@ -73,7 +86,7 @@ export const extinguisherService = {
   scheduleInspection: (id: string, payload: ScheduleInspectionPayload) =>
     apiClient.post(`/extinguishers/${id}/inspections`, payload).then((r) => r.data),
 
-  listInspections: (params: { page?: number; limit?: number } = {}) =>
+  listInspections: (params: { page?: number; limit?: number; status?: InspectionStatus } = {}) =>
     apiClient
       .get<PaginatedResult<ExtinguisherInspection>>('/extinguishers/inspections', { params })
       .then((r) => r.data),
@@ -81,6 +94,21 @@ export const extinguisherService = {
   updateInspection: (id: string, payload: UpdateInspectionPayload) =>
     apiClient
       .patch<ExtinguisherInspection>(`/extinguishers/inspections/${id}`, payload)
+      .then((r) => r.data),
+
+  startInspection: (id: string) =>
+    apiClient
+      .patch<ExtinguisherInspection>(`/extinguishers/inspections/${id}/start`)
+      .then((r) => r.data),
+
+  submitInspectionReport: (id: string, payload: SubmitInspectionReportPayload) =>
+    apiClient
+      .post<ExtinguisherInspection>(`/extinguishers/inspections/${id}/report`, payload)
+      .then((r) => r.data),
+
+  reviewInspection: (id: string, payload: AdminReviewInspectionPayload) =>
+    apiClient
+      .patch<ExtinguisherInspection>(`/extinguishers/inspections/${id}/review`, payload)
       .then((r) => r.data),
 
   logMaintenance: (id: string, payload: LogMaintenancePayload) =>

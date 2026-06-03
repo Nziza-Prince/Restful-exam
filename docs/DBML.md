@@ -17,9 +17,12 @@ Enum extinguisher_status {
 }
 
 Enum inspection_status {
-  SCHEDULED
-  COMPLETED
-  CANCELLED
+  PENDING
+  IN_PROGRESS
+  COMPLETED_PENDING_ADMIN_REVIEW
+  APPROVED
+  REJECTED
+  REQUIRES_MAINTENANCE
 }
 
 Enum renewal_request_type {
@@ -89,7 +92,7 @@ Table customers {
 
 Table fire_extinguishers {
   id uuid [pk]
-  serial_number varchar(100)
+  serial_number varchar(100) [unique]
   type varchar(100) // Water, CO2, Foam, Dry Chemical
   location varchar(200)
   size varchar(50) // 2.5lbs, 5lbs, 9lbs, 12lbs
@@ -112,6 +115,12 @@ Table extinguisher_inspections {
   inspector_id uuid
   status inspection_status
   notes text
+  report_condition text
+  report_notes text
+  actions_taken text
+  inspection_result varchar(100)
+  inspection_date date
+  admin_review_notes text
   created_at timestamptz
   updated_at timestamptz
 }

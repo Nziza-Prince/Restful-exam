@@ -27,6 +27,10 @@ export class ExtinguishersRepository {
     return this.repo.findOne({ where: { id } });
   }
 
+  findBySerialNumber(serialNumber: string): Promise<FireExtinguisher | null> {
+    return this.repo.findOne({ where: { serialNumber } });
+  }
+
   findAll(): Promise<FireExtinguisher[]> {
     return this.repo.find();
   }

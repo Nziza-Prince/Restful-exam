@@ -28,10 +28,13 @@ Updated requirement endpoints:
 | GET | /extinguishers/:id | Admin/User/Inspector | Extinguisher details |
 | PATCH | /extinguishers/:id | Admin | Update extinguisher |
 | DELETE | /extinguishers/:id | Admin | Remove extinguisher |
-| POST | /extinguishers/:id/inspections | Admin/User/Inspector | Schedule inspection and trigger notification when assigned |
-| GET | /extinguishers/inspections | Admin/Inspector | Paginated list of all scheduled inspection requests |
+| POST | /extinguishers/:id/inspections | User | Request inspection with date/time; new status is PENDING |
+| GET | /extinguishers/inspections | Admin/Inspector | Paginated inspection requests; supports status filter |
 | GET | /extinguishers/:id/inspections | Admin/Inspector | Paginated inspection list |
-| PATCH | /extinguishers/inspections/:inspectionId | Admin/Inspector | Update inspection status/assignment |
+| PATCH | /extinguishers/inspections/:inspectionId | Admin | Administrative update of inspection status/assignment |
+| PATCH | /extinguishers/inspections/:inspectionId/start | Inspector | Start inspection; status becomes IN_PROGRESS |
+| POST | /extinguishers/inspections/:inspectionId/report | Inspector | Submit condition, notes, actionsTaken, result, inspectionDate; status becomes COMPLETED_PENDING_ADMIN_REVIEW |
+| PATCH | /extinguishers/inspections/:inspectionId/review | Admin | Approve, reject, or mark REQUIRES_MAINTENANCE |
 | POST | /extinguishers/:id/maintenance | Admin/Inspector | Log actions taken, action date, and conditions noted |
 | GET | /extinguishers/:id/maintenance | Admin/Inspector | Paginated maintenance history |
 | GET | /reports/total-stock | Admin | Total extinguisher count |
@@ -98,12 +101,16 @@ Response includes `accessToken` and `refreshToken`.
 | POST | /extinguishers | Admin | Register extinguisher |
 | PATCH | /extinguishers/:id | Admin | Update |
 | DELETE | /extinguishers/:id | Admin | Delete |
-| POST | /extinguishers/:id/inspections | Admin/User/Inspector | Schedule inspection with date/time |
-| GET | /extinguishers/inspections | Admin/Inspector | View all scheduled inspection requests |
-| PATCH | /extinguishers/inspections/:inspectionId | Admin/Inspector | Update inspection status |
+| POST | /extinguishers/:id/inspections | User | Request inspection with date/time |
+| GET | /extinguishers/inspections | Admin/Inspector | View pending, assigned, or submitted inspection requests |
+| PATCH | /extinguishers/inspections/:inspectionId/start | Inspector | Move request to IN_PROGRESS |
+| POST | /extinguishers/inspections/:inspectionId/report | Inspector | Submit report and move to admin review |
+| PATCH | /extinguishers/inspections/:inspectionId/review | Admin | Final decision: APPROVED, REJECTED, or REQUIRES_MAINTENANCE |
 | POST | /extinguishers/:id/maintenance | Admin/Inspector | Log maintenance actions taken, action date, and conditions noted |
 
 Query params: `status`, `customerId`, `expiryFrom`, `expiryTo`, `search`, `page`, `limit`
+
+Inspection statuses: `PENDING`, `IN_PROGRESS`, `COMPLETED_PENDING_ADMIN_REVIEW`, `APPROVED`, `REJECTED`, `REQUIRES_MAINTENANCE`.
 
 ## Notifications
 

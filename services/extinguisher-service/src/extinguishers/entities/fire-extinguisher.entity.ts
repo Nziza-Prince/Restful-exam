@@ -2,12 +2,14 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { ExtinguisherStatus } from './extinguisher-status.enum';
 
 @Entity('fire_extinguishers')
+@Index(['serialNumber'], { unique: true })
 export class FireExtinguisher {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -40,6 +40,20 @@ export class CustomerClient {
     );
     return data;
   }
+
+  async findById(id: string): Promise<CustomerSnapshot | null> {
+    try {
+      const { data } = await firstValueFrom(
+        this.http.get<CustomerSnapshot>(
+          `${this.baseUrl}/api/internal/customers/${id}`,
+          { headers: this.headers },
+        ),
+      );
+      return data;
+    } catch {
+      return null;
+    }
+  }
 }
 
 export type NotificationTriggerType =
@@ -49,7 +63,8 @@ export type NotificationTriggerType =
   | 'EXPIRY_7'
   | 'EXPIRY_0'
   | 'ASSIGNED'
-  | 'INSPECTION_SCHEDULED';
+  | 'INSPECTION_SCHEDULED'
+  | 'INSPECTION_REPORT_SUBMITTED';
 
 export interface TriggerNotificationPayload {
   customerId: string;

@@ -63,13 +63,6 @@ export function ExtinguishersPage() {
   const [inspectionSaving, setInspectionSaving] = useState(false);
   const [inspectionError, setInspectionError] = useState('');
   const [inspectionMessage, setInspectionMessage] = useState('');
-  const [maintenanceTarget, setMaintenanceTarget] = useState<FireExtinguisher | null>(null);
-  const [maintenanceActionsTaken, setMaintenanceActionsTaken] = useState('');
-  const [maintenanceActionDate, setMaintenanceActionDate] = useState(today());
-  const [maintenanceConditionsNoted, setMaintenanceConditionsNoted] = useState('');
-  const [maintenanceSaving, setMaintenanceSaving] = useState(false);
-  const [maintenanceError, setMaintenanceError] = useState('');
-  const [maintenanceMessage, setMaintenanceMessage] = useState('');
 
   // Assign modal state
   const [assignTarget, setAssignTarget] = useState<FireExtinguisher | null>(null);
@@ -190,40 +183,6 @@ export function ExtinguishersPage() {
     }
   };
 
-  const openMaintenance = (row: FireExtinguisher) => {
-    setMaintenanceTarget(row);
-    setMaintenanceActionsTaken('');
-    setMaintenanceActionDate(today());
-    setMaintenanceConditionsNoted('');
-    setMaintenanceError('');
-    setMaintenanceMessage('');
-  };
-
-  const logMaintenance = async () => {
-    if (!maintenanceTarget) return;
-    if (!maintenanceActionsTaken.trim() || !maintenanceActionDate || !maintenanceConditionsNoted.trim()) {
-      setMaintenanceError('Enter actions taken, action date, and conditions noted.');
-      return;
-    }
-
-    setMaintenanceSaving(true);
-    setMaintenanceError('');
-    setMaintenanceMessage('');
-
-    try {
-      await extinguisherService.logMaintenance(maintenanceTarget.id, {
-        actionsTaken: maintenanceActionsTaken.trim(),
-        actionDate: maintenanceActionDate,
-        conditionsNoted: maintenanceConditionsNoted.trim(),
-      });
-      setMaintenanceMessage('Maintenance activity logged successfully.');
-    } catch (error) {
-      setMaintenanceError((error as Error).message);
-    } finally {
-      setMaintenanceSaving(false);
-    }
-  };
-
   const handleAssign = async () => {
     if (!assignTarget) return;
     if (!assignCustomerId) {
@@ -276,9 +235,6 @@ export function ExtinguishersPage() {
           <Button size="sm" variant="secondary" onClick={() => openDetails(row)}>
             View
           </Button>
-          <Button size="sm" variant="secondary" onClick={() => openInspection(row)}>
-            Schedule
-          </Button>
           <Button
             size="sm"
             variant="ghost"
@@ -305,6 +261,18 @@ export function ExtinguishersPage() {
     { key: 'serialNumber', header: 'Serial' },
     { key: 'type', header: 'Type' },
     { key: 'location', header: 'Location' },
+    {
+      key: 'owner',
+      header: 'Owner',
+      render: (row) =>
+        row.customerId ? (
+          <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+            {row.customer?.fullName ?? customers.find((c) => c.id === row.customerId)?.fullName ?? 'Assigned'}
+          </span>
+        ) : (
+          <Badge tone="neutral">Unassigned</Badge>
+        ),
+    },
     { key: 'size', header: 'Size' },
     {
       key: 'expiryDate',
@@ -361,9 +329,6 @@ export function ExtinguishersPage() {
           <Button size="sm" variant="secondary" onClick={() => openDetails(row)}>
             View
           </Button>
-          <Button size="sm" onClick={() => openInspection(row)}>
-            Schedule
-          </Button>
         </div>
       ),
     },
@@ -395,9 +360,6 @@ export function ExtinguishersPage() {
           <Button size="sm" onClick={() => openInspection(row)}>
             Schedule
           </Button>
-          <Button size="sm" variant="secondary" onClick={() => openMaintenance(row)}>
-            Log Maintenance
-          </Button>
         </div>
       ),
     },
@@ -427,7 +389,7 @@ export function ExtinguishersPage() {
           isAdmin
             ? 'Manage and assign fire extinguisher inventory'
             : isInspector
-            ? 'Review extinguisher details and schedule inspections'
+            ? 'Review assigned extinguisher details'
             : tab === 'mine'
             ? 'Your registered fire extinguishers'
             : 'Available extinguishers you can acquire'
@@ -677,71 +639,6 @@ export function ExtinguishersPage() {
             value={inspectionNotes}
             onChange={(e) => setInspectionNotes(e.target.value)}
             placeholder="Access instructions, preferred inspector, or safety notes"
-          />
-        </div>
-      </Modal>
-
-      <Modal
-        open={!!maintenanceTarget}
-        onClose={() => setMaintenanceTarget(null)}
-        title="Log Maintenance"
-        description={
-          maintenanceTarget
-            ? `${maintenanceTarget.serialNumber} - ${maintenanceTarget.location}`
-            : undefined
-        }
-        footer={
-          <div className="flex justify-end gap-2 border-t border-zinc-100 px-5 py-3 dark:border-zinc-800">
-            <Button variant="secondary" onClick={() => setMaintenanceTarget(null)}>
-              Close
-            </Button>
-            <Button loading={maintenanceSaving} onClick={logMaintenance}>
-              Save maintenance log
-            </Button>
-          </div>
-        }
-      >
-        <div className="space-y-3">
-          {maintenanceError && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
-              {maintenanceError}
-            </p>
-          )}
-          {maintenanceMessage && (
-            <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-sm text-green-700 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-400">
-              {maintenanceMessage}
-            </p>
-          )}
-          <TextArea
-            label="Actions taken"
-            value={maintenanceActionsTaken}
-            onChange={(e) => {
-              setMaintenanceActionsTaken(e.target.value);
-              setMaintenanceError('');
-            }}
-            placeholder="Replaced pressure gauge and resealed cylinder"
-            required
-          />
-          <Input
-            label="Date of action"
-            type="date"
-            max={today()}
-            value={maintenanceActionDate}
-            onChange={(e) => {
-              setMaintenanceActionDate(e.target.value);
-              setMaintenanceError('');
-            }}
-            required
-          />
-          <TextArea
-            label="Conditions noted during maintenance"
-            value={maintenanceConditionsNoted}
-            onChange={(e) => {
-              setMaintenanceConditionsNoted(e.target.value);
-              setMaintenanceError('');
-            }}
-            placeholder="Pressure was below acceptable range"
-            required
           />
         </div>
       </Modal>
