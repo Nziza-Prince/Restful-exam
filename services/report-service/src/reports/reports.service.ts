@@ -8,6 +8,28 @@ import { ReportQueryDto } from './dto/report-query.dto';
 import { ExportResult, ExportService } from './export.service';
 import { ReportFormat } from './enums/report-format.enum';
 
+/**
+ * REPORTS SERVICE
+ * 
+ * Business logic for generating compliance and operational reports.
+ * Aggregates data from multiple microservices (extinguisher, compliance, renewal, notification)
+ * and formats results for export in various formats (CSV, XLSX, PDF).
+ * 
+ * KEY FEATURES:
+ * - Multi-service data aggregation
+ * - Admin-scoped filtering (only show data for extinguishers created by requesting admin)
+ * - Flexible export formatting
+ * - Real-time dashboard metrics
+ * 
+ * REPORT TYPES:
+ * - expiredExtinguishers: Units past expiry
+ * - expiringSoon: Units approaching expiry
+ * - complianceSummary: Comprehensive compliance overview (includes expired count as metric)
+ * - maintenanceHistory: Maintenance activity log
+ * - inspectionStatus: Inspection request status breakdown
+ * - dashboardSummary: Live metrics for dashboard widgets
+ */
+
 @Injectable()
 export class ReportsService {
   constructor(
@@ -19,6 +41,11 @@ export class ReportsService {
     private readonly exportService: ExportService,
   ) {}
 
+  /**
+   * Build query parameters for time-based reports
+   * - Defaults to 90-day window if not specified
+   * - Includes adminId for access control filtering
+   */
   private params(query: ReportQueryDto & { adminId?: string }) {
     return {
       customerId: query.customerId,
@@ -29,7 +56,11 @@ export class ReportsService {
     };
   }
 
-  /** Params safe for internal service list endpoints (strict DTO validation). */
+  /**
+   * Build pagination parameters for internal service list endpoints
+   * - Fetches up to 100 records per call
+   * - Optionally filters by customerId
+   */
   private internalListParams(query: ReportQueryDto) {
     return {
       page: '1',
@@ -101,12 +132,14 @@ export class ReportsService {
         value: stock.length,
         details: 'Registered extinguishers currently in inventory',
       },
+      // ── Inspection status breakdown ─────────────────────────────────────
       ...inspectionStatus.map((row) => ({
         section: 'Inspection status',
         metric: row.status ?? 'unknown',
         value: row.count ?? 0,
         details: 'Inspection request count by review status',
       })),
+      // ── Expired extinguisher details (one row per unit) ─────────────────
       ...expired.map((row) => ({
         section: 'Expired extinguishers',
         metric: row.serialNumber ?? row.extinguisherId ?? 'Unknown extinguisher',
@@ -118,6 +151,7 @@ export class ReportsService {
           row.expiryDate ? `Expires: ${row.expiryDate}` : undefined,
         ].filter(Boolean).join(' | '),
       })),
+      // ── Maintenance history logs (one row per log entry) ────────────────
       ...maintenanceHistory.map((row) => ({
         section: 'Maintenance history',
         metric: row.actionDate ?? 'Unknown date',
@@ -157,10 +191,16 @@ export class ReportsService {
     return this.respond('inspection-status', rows, query.format ?? ReportFormat.CSV);
   }
 
+  /**
+   * Generate maintenance history report
+   * - Lists all maintenance actions performed on extinguishers
+   * - Includes: date, extinguisher ID, actions taken, conditions, technician
+   * - Cleaned column names for readability in exports
+   */
   async maintenanceHistory(query: ReportQueryDto & { adminId?: string }): Promise<ExportResult | Record<string, unknown>[]> {
     const rawRows = await this.extinguisherClient.getMaintenanceHistory({ adminId: query.adminId });
     
-    // Transform to more readable format
+    // Transform to more readable column names for export
     const rows = rawRows.map(row => ({
       maintenanceDate: row.actionDate,
       extinguisherId: row.extinguisherId,

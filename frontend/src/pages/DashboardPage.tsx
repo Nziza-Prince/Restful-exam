@@ -25,10 +25,36 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchDashboardSummary, setDashboardCounts } from '@/store/slices/reportSlice';
 import { formatDate, formatDateTime, recordToChartData } from '@/utils';
 
-// Cohesive chart palette — warm copper to amber to gold, no neon
+/**
+ * DASHBOARD PAGE
+ * 
+ * Multi-role dashboard showing role-specific metrics and actions.
+ * 
+ * ADMIN ROLE:
+ * - Overview stats: total customers, extinguishers, expired units, compliance issues
+ * - Charts: Expired by month, expiring soon distribution, compliance status breakdown
+ * - Inspection review queue: Review inspector-submitted reports
+ * 
+ * INSPECTOR ROLE:
+ * - Inspection request queue: Start, complete, and submit reports
+ * - Maintenance logging: Record maintenance actions on extinguishers
+ * - Workload stats: Pending, in-progress, completed requests
+ * 
+ * CUSTOMER ROLE:
+ * - My extinguishers count
+ * - Active monitoring status
+ */
+
+// ── Chart styling ─────────────────────────────────────────────────────────────
+
+// Cohesive chart palette — warm copper to amber to gold
 const CHART_COLORS = ['#b45309', '#d97706', '#f59e0b', '#78350f', '#92400e'];
 
-// Muted tooltip style to match the design system
+/**
+ * Custom tooltip component for charts
+ * - Displays value with label in styled container
+ * - Matches app design system (zinc colors, rounded borders)
+ */
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
@@ -47,19 +73,29 @@ export function DashboardPage() {
   const { dashboard, totalCustomers, totalExtinguishers, loading } = useAppSelector(
     (state) => state.reports,
   );
+
+  // ── Inspection management state ───────────────────────────────────────────
   const [inspectionRequests, setInspectionRequests] = useState<ExtinguisherInspection[]>([]);
   const [inspectionLoading, setInspectionLoading] = useState(false);
   const [inspectionError, setInspectionError] = useState('');
+  
+  // ── Inspector report submission modal ─────────────────────────────────────
   const [reportTarget, setReportTarget] = useState<ExtinguisherInspection | null>(null);
   const [reportCondition, setReportCondition] = useState('');
   const [reportNotes, setReportNotes] = useState('');
   const [reportActions, setReportActions] = useState('');
   const [reportResult, setReportResult] = useState('PASS');
   const [reportDate, setReportDate] = useState(new Date().toISOString().slice(0, 10));
+  
+  // ── Admin review modal ────────────────────────────────────────────────────
   const [reviewTarget, setReviewTarget] = useState<ExtinguisherInspection | null>(null);
   const [reviewStatus, setReviewStatus] = useState<'APPROVED' | 'REJECTED' | 'REQUIRES_MAINTENANCE'>('APPROVED');
   const [reviewNotes, setReviewNotes] = useState('');
+  
+  // ── Inspection details modal ──────────────────────────────────────────────
   const [detailsTarget, setDetailsTarget] = useState<ExtinguisherInspection | null>(null);
+  
+  // ── Maintenance logging modal ─────────────────────────────────────────────
   const [maintenanceTarget, setMaintenanceTarget] = useState<ExtinguisherInspection | null>(null);
   const [maintenanceActionsTaken, setMaintenanceActionsTaken] = useState('');
   const [maintenanceActionDate, setMaintenanceActionDate] = useState(new Date().toISOString().slice(0, 10));
@@ -67,9 +103,16 @@ export function DashboardPage() {
   const [maintenanceError, setMaintenanceError] = useState('');
   const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
   const [maintenanceLogsLoading, setMaintenanceLogsLoading] = useState(false);
+  
   void inspectionLoading;
   void inspectionError;
 
+  /**
+   * Load dashboard data on mount
+   * - Admin: Fetches dashboard metrics, customer count, extinguisher count, and inspection queue
+   * - Inspector: Fetches inspection requests and extinguisher count
+   * - Customer: Fetches owned extinguisher count
+   */
   useEffect(() => {
     const load = async () => {
       if (isAdmin) {

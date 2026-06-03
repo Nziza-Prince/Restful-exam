@@ -6,6 +6,34 @@ import { ReportQueryDto } from './dto/report-query.dto';
 import { ExportResult } from './export.service';
 import { ReportsService } from './reports.service';
 
+/**
+ * REPORTS CONTROLLER
+ * 
+ * REST API endpoints for generating compliance and operational reports.
+ * All endpoints are admin-only and require JWT authentication.
+ * 
+ * REPORT TYPES:
+ * - Expired extinguishers: Units past expiry date
+ * - Expiring soon: Units approaching expiry within threshold
+ * - Customer compliance: Compliance case summary by customer
+ * - Renewal requests: Pending renewal/replacement requests
+ * - Notifications: System notifications log
+ * - Compliance summary: Comprehensive compliance report (stock, expired count, inspections, maintenance)
+ * - Period reports: Daily/monthly/yearly extinguisher registration trends
+ * - Inspection status: Breakdown of inspection request states
+ * - Maintenance history: Historical maintenance activity log
+ * - Dashboard summary: Real-time metrics for dashboard display
+ * 
+ * EXPORT FORMATS:
+ * - CSV: Comma-separated values for data analysis
+ * - XLSX: Excel spreadsheet format
+ * - PDF: Formatted printable document
+ * - JSON: Raw data for API consumers
+ */
+
+/**
+ * Type guard to check if service response is a file export or JSON data
+ */
 function isExportResult(value: unknown): value is ExportResult {
   return (
     typeof value === 'object' &&
@@ -24,6 +52,10 @@ function isExportResult(value: unknown): value is ExportResult {
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
+  /**
+   * GET /reports/expired-extinguishers
+   * List all extinguishers past their expiry date
+   */
   @Get('expired-extinguishers')
   async expiredExtinguishers(
     @CurrentUser() user: JwtPayload,
@@ -36,6 +68,10 @@ export class ReportsController {
     );
   }
 
+  /**
+   * GET /reports/expiring-soon
+   * List extinguishers approaching expiry within threshold days
+   */
   @Get('expiring-soon')
   async expiringSoon(
     @CurrentUser() user: JwtPayload,
@@ -48,6 +84,10 @@ export class ReportsController {
     );
   }
 
+  /**
+   * GET /reports/customer-compliance
+   * Compliance case summary grouped by customer
+   */
   @Get('customer-compliance')
   async customerCompliance(
     @CurrentUser() user: JwtPayload,
@@ -89,6 +129,15 @@ export class ReportsController {
     return this.reportsService.totalStock({ ...query, adminId: user.sub });
   }
 
+  /**
+   * GET /reports/compliance-summary
+   * Comprehensive compliance report including:
+   * - Total stock count
+   * - Expired extinguishers count (summary metric)
+   * - Inspection status breakdown
+   * - Detailed expired extinguisher list
+   * - Maintenance history logs
+   */
   @Get('compliance-summary')
   async complianceSummary(
     @CurrentUser() user: JwtPayload,
@@ -157,6 +206,11 @@ export class ReportsController {
     return this.reportsService.dashboardSummary({ ...query, adminId: user.sub });
   }
 
+  /**
+   * Helper method to send report response
+   * - If ExportResult (file): Set headers and send binary buffer
+   * - If JSON data: Send as application/json
+   */
   private sendReport(result: ExportResult | Record<string, unknown>[], res: Response) {
     if (isExportResult(result)) {
       res.setHeader('Content-Type', result.contentType);
