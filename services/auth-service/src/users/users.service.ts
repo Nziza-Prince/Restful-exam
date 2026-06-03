@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
@@ -10,6 +12,8 @@ import { paginate, PaginatedResult, UserRole } from '@fems/shared';
 import { Repository } from 'typeorm';
 import { RegisterDto } from '../auth/dto/register.dto';
 import { User } from '../entities/user.entity';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -29,16 +33,21 @@ export class UsersService {
     }
 
     const hashed = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const role = UserRole.CUSTOMER;
+    const role = dto.role === UserRole.INSPECTOR ? UserRole.INSPECTOR : UserRole.USER;
+    const firstName = dto.firstName.trim();
+    const lastName = dto.lastName.trim();
+    const fullName = `${firstName} ${lastName}`.trim();
     const user = this.usersRepo.create({
-      fullName: dto.fullName.trim(),
+      firstName,
+      lastName,
+      fullName,
       email: dto.email.toLowerCase(),
       password: hashed,
       role,
     });
     const saved = await this.usersRepo.save(user);
 
-    if (role === UserRole.CUSTOMER) {
+    if (role === UserRole.USER) {
       try {
         const customerServiceUrl = process.env.CUSTOMER_SERVICE_URL || 'http://localhost:3002';
         const serviceKey = process.env.SERVICE_INTERNAL_KEY || 'dev-internal-service-key';
@@ -49,7 +58,7 @@ export class UsersService {
             'X-Service-Key': serviceKey,
           },
           body: JSON.stringify({
-            fullName: dto.fullName.trim(),
+            fullName,
             email: dto.email.toLowerCase(),
             nationalId: `NAT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
             phone: '0780000000',
@@ -69,6 +78,8 @@ export class UsersService {
       where: { email: email.toLowerCase() },
       select: {
         id: true,
+        firstName: true,
+        lastName: true,
         fullName: true,
         email: true,
         password: true,
@@ -81,6 +92,53 @@ export class UsersService {
 
   async findById(id: string): Promise<User | null> {
     return this.usersRepo.findOne({ where: { id } });
+  }
+
+  async updateProfile(id: string, dto: UpdateProfileDto) {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('User not found');
+
+    if (dto.email && dto.email.toLowerCase() !== user.email) {
+      const duplicate = await this.usersRepo.findOne({
+        where: { email: dto.email.toLowerCase() },
+      });
+      if (duplicate) throw new ConflictException('Email already registered');
+      user.email = dto.email.toLowerCase();
+    }
+
+    if (dto.firstName !== undefined) user.firstName = dto.firstName.trim();
+    if (dto.lastName !== undefined) user.lastName = dto.lastName.trim();
+    user.fullName = `${user.firstName} ${user.lastName}`.trim() || user.fullName;
+
+    return this.sanitize(await this.usersRepo.save(user));
+  }
+
+  async changePassword(id: string, dto: ChangePasswordDto) {
+    const user = await this.usersRepo.findOne({
+      where: { id },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        fullName: true,
+        email: true,
+        password: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const valid = await bcrypt.compare(dto.currentPassword, user.password);
+    if (!valid) throw new UnauthorizedException('Current password is incorrect');
+    if (await bcrypt.compare(dto.newPassword, user.password)) {
+      throw new BadRequestException('New password must be different');
+    }
+
+    user.password = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
+    await this.usersRepo.save(user);
+    return { success: true };
   }
 
   async findAll(
@@ -115,10 +173,12 @@ export class UsersService {
     const randomPassword = randomBytes(32).toString('hex');
     const hashed = await bcrypt.hash(randomPassword, BCRYPT_ROUNDS);
     const user = this.usersRepo.create({
+      firstName: fullName.trim().split(/\s+/)[0] ?? fullName.trim(),
+      lastName: fullName.trim().split(/\s+/).slice(1).join(' ') || 'User',
       fullName: fullName.trim(),
       email: email.toLowerCase(),
       password: hashed,
-      role: UserRole.CUSTOMER,
+      role: UserRole.USER,
     });
     await this.usersRepo.save(user);
   }
@@ -128,6 +188,8 @@ export class UsersService {
       where: { email: email.toLowerCase() },
       select: {
         id: true,
+        firstName: true,
+        lastName: true,
         fullName: true,
         email: true,
         password: true,

@@ -14,6 +14,7 @@ import { RenewalsPage } from '@/pages/RenewalsPage';
 import { CompliancePage } from '@/pages/CompliancePage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { ProfilePage } from '@/pages/ProfilePage';
 
 export const router = createBrowserRouter([
   {
@@ -34,13 +35,14 @@ export const router = createBrowserRouter([
           { path: 'dashboard', element: <DashboardPage /> },
           { path: 'extinguishers', element: <ExtinguishersPage /> },
           { path: 'notifications', element: <NotificationsPage /> },
-          { path: 'renewals', element: <RenewalsPage /> },
+          { path: 'profile', element: <ProfilePage /> },
           {
             element: <RoleRoute roles={['admin']} />,
             children: [
               { path: 'customers', element: <CustomersPage /> },
               { path: 'compliance', element: <CompliancePage /> },
               { path: 'reports', element: <ReportsPage /> },
+              { path: 'renewals', element: <RenewalsPage /> },
               { path: 'settings', element: <SettingsPage /> },
             ],
           },

@@ -84,6 +84,59 @@ export class ReportsController {
     );
   }
 
+  @Get('total-stock')
+  totalStock(@CurrentUser() user: JwtPayload, @Query() query: ReportQueryDto) {
+    return this.reportsService.totalStock({ ...query, adminId: user.sub });
+  }
+
+  @Get('daily')
+  async daily(@CurrentUser() user: JwtPayload, @Query() query: ReportQueryDto, @Res() res: Response) {
+    return this.sendReport(
+      await this.reportsService.extinguisherPeriodReport('daily', { ...query, adminId: user.sub }),
+      res,
+    );
+  }
+
+  @Get('monthly')
+  async monthly(@CurrentUser() user: JwtPayload, @Query() query: ReportQueryDto, @Res() res: Response) {
+    return this.sendReport(
+      await this.reportsService.extinguisherPeriodReport('monthly', { ...query, adminId: user.sub }),
+      res,
+    );
+  }
+
+  @Get('yearly')
+  async yearly(@CurrentUser() user: JwtPayload, @Query() query: ReportQueryDto, @Res() res: Response) {
+    return this.sendReport(
+      await this.reportsService.extinguisherPeriodReport('yearly', { ...query, adminId: user.sub }),
+      res,
+    );
+  }
+
+  @Get('inspection-status')
+  async inspectionStatus(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: ReportQueryDto,
+    @Res() res: Response,
+  ) {
+    return this.sendReport(
+      await this.reportsService.inspectionStatus({ ...query, adminId: user.sub }),
+      res,
+    );
+  }
+
+  @Get('maintenance-history')
+  async maintenanceHistory(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: ReportQueryDto,
+    @Res() res: Response,
+  ) {
+    return this.sendReport(
+      await this.reportsService.maintenanceHistory({ ...query, adminId: user.sub }),
+      res,
+    );
+  }
+
   @Get('dashboard-summary')
   dashboardSummary(
     @CurrentUser() user: JwtPayload,

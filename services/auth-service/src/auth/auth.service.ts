@@ -18,6 +18,9 @@ import { RegisterDto } from './dto/register.dto';
 import { SetupPasswordDto } from './dto/setup-password.dto';
 
 const BCRYPT_ROUNDS = 12;
+const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
+
+const passwordResetTokens = new Map<string, { email: string; expiresAt: number }>();
 
 @Injectable()
 export class AuthService {
@@ -120,10 +123,11 @@ export class AuthService {
       user = this.usersService.sanitize(updated);
     } else {
       user = await this.usersService.createCustomer({
-        fullName: customer.fullName,
+        firstName: customer.fullName.split(/\s+/)[0] ?? customer.fullName,
+        lastName: customer.fullName.split(/\s+/).slice(1).join(' ') || 'User',
         email: customer.email,
         password: dto.password,
-        role: UserRole.CUSTOMER,
+        role: UserRole.USER,
       } as RegisterDto);
     }
 
@@ -160,6 +164,47 @@ export class AuthService {
       });
     }
 
+    return { success: true };
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) return { success: true };
+
+    const token = randomBytes(32).toString('base64url');
+    passwordResetTokens.set(token, {
+      email: user.email,
+      expiresAt: Date.now() + RESET_TOKEN_TTL_MS,
+    });
+    await this.auditService.log({
+      userId: user.id,
+      action: 'PASSWORD_RESET_REQUEST',
+      entity: 'user',
+      entityId: user.id,
+    });
+
+    return {
+      success: true,
+      resetToken: token,
+      message: 'Password reset token generated. In production this token is sent by email.',
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const entry = passwordResetTokens.get(token);
+    if (!entry || entry.expiresAt < Date.now()) {
+      passwordResetTokens.delete(token);
+      throw new UnauthorizedException('Invalid or expired password reset token');
+    }
+
+    const updated = await this.usersService.updatePassword(entry.email, newPassword);
+    passwordResetTokens.delete(token);
+    await this.auditService.log({
+      userId: updated.id,
+      action: 'PASSWORD_RESET',
+      entity: 'user',
+      entityId: updated.id,
+    });
     return { success: true };
   }
 

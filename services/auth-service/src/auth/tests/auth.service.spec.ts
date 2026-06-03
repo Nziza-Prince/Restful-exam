@@ -23,10 +23,12 @@ describe('AuthService', () => {
 
   const mockUser: User = {
     id: 'user-1',
+    firstName: 'Test',
+    lastName: 'User',
     fullName: 'Test User',
     email: 'test@example.com',
     password: 'hashed',
-    role: 'customer' as never,
+    role: 'user' as never,
     refreshTokens: [],
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -113,7 +115,8 @@ describe('AuthService', () => {
     );
 
     const result = await authService.register({
-      fullName: 'Test User',
+      firstName: 'Test',
+      lastName: 'User',
       email: 'test@example.com',
       password: 'SecurePass123!',
     });

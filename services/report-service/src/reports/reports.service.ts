@@ -78,15 +78,53 @@ export class ReportsService {
     return this.respond('notifications', rows, query.format ?? ReportFormat.CSV);
   }
 
+  async totalStock(query: ReportQueryDto & { adminId?: string }) {
+    const rows = await this.extinguisherClient.getExtinguishers({ createdBy: query.adminId });
+    return {
+      total: rows.length,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  async extinguisherPeriodReport(
+    period: 'daily' | 'monthly' | 'yearly',
+    query: ReportQueryDto & { adminId?: string },
+  ): Promise<ExportResult | Record<string, unknown>[]> {
+    const rows = await this.extinguisherClient.getExtinguishers({ createdBy: query.adminId });
+    const keyLength = period === 'daily' ? 10 : period === 'monthly' ? 7 : 4;
+    const grouped = rows.reduce<Record<string, number>>((acc, row) => {
+      const raw = String(row.installationDate ?? row.purchaseDate ?? row.createdAt ?? 'unknown');
+      const key = raw === 'unknown' ? raw : raw.slice(0, keyLength);
+      acc[key] = (acc[key] ?? 0) + 1;
+      return acc;
+    }, {});
+    const reportRows = Object.entries(grouped).map(([periodLabel, count]) => ({
+      period: periodLabel,
+      extinguishers: count,
+    }));
+    return this.respond(`${period}-extinguisher-report`, reportRows, query.format ?? ReportFormat.CSV);
+  }
+
+  async inspectionStatus(query: ReportQueryDto & { adminId?: string }): Promise<ExportResult | Record<string, unknown>[]> {
+    const rows = await this.extinguisherClient.getInspectionStatus({ adminId: query.adminId });
+    return this.respond('inspection-status', rows, query.format ?? ReportFormat.CSV);
+  }
+
+  async maintenanceHistory(query: ReportQueryDto & { adminId?: string }): Promise<ExportResult | Record<string, unknown>[]> {
+    const rows = await this.extinguisherClient.getMaintenanceHistory({ adminId: query.adminId });
+    return this.respond('maintenance-history', rows, query.format ?? ReportFormat.CSV);
+  }
+
   async dashboardSummary(query: ReportQueryDto & { adminId?: string }) {
     const params = this.params(query);
     const listParams = this.internalListParams(query);
-    const [expired, expiring, compliance, renewals, notifications] = await Promise.all([
+    const [expired, expiring, compliance, renewals, notifications, allExtinguishers] = await Promise.all([
       this.extinguisherClient.getExpired(params),
       this.extinguisherClient.getExpiringSoon(params),
       this.complianceClient.getCases(listParams),
       this.renewalClient.getRenewalRequests(listParams),
       this.notificationClient.getNotifications(listParams),
+      this.extinguisherClient.getExtinguishers({ createdBy: query.adminId }),
     ]);
 
     let filteredCompliance = compliance;
@@ -104,6 +142,7 @@ export class ReportsService {
     return {
       charts: {
         expiredCount: expired.length,
+        totalExtinguishers: allExtinguishers.length,
         expiringSoonCount: expiring.length,
         complianceIssues: filteredCompliance.length,
         pendingRenewals: filteredRenewals.length,

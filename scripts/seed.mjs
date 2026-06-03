@@ -15,7 +15,7 @@ import { randomUUID } from 'crypto';
 const { Client } = pg;
 const DB_URL = process.env.DATABASE_URL_BASE
   ? process.env.DATABASE_URL_BASE
-  : 'postgresql://postgres:ivan.2008@localhost:5432';
+  : 'postgresql://exam:exam@localhost:5432';
 
 const ADMIN_PASSWORD = 'Admin@123';
 const CUSTOMER_PASSWORD = 'Customer@123';
@@ -51,11 +51,13 @@ async function requireTable(client, dbLabel, tableName) {
 
 /** Upsert a user; returns the row's id (existing or newly inserted). */
 async function upsertUser(client, id, fullName, email, passwordHash, role) {
+  const [firstName, ...rest] = fullName.trim().split(/\s+/);
+  const lastName = rest.join(' ') || 'User';
   await client.query(
-    `INSERT INTO users (id, full_name, email, password, role, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+    `INSERT INTO users (id, first_name, last_name, full_name, email, password, role, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
      ON CONFLICT (email) DO NOTHING`,
-    [id, fullName, email, passwordHash, role],
+    [id, firstName, lastName, fullName, email, passwordHash, role],
   );
   const row = await client.query('SELECT id FROM users WHERE email = $1', [email]);
   return row.rows[0].id;
@@ -81,8 +83,8 @@ async function seedAuth() {
   const customerHash = await bcrypt.hash(CUSTOMER_PASSWORD, 12);
 
   const adminId = await upsertUser(client, randomUUID(), 'System Administrator', 'admin@fems.local', adminHash, 'admin');
-  const customerUser1Id = await upsertUser(client, randomUUID(), 'Alice Johnson', 'alice@example.com', customerHash, 'customer');
-  const customerUser2Id = await upsertUser(client, randomUUID(), 'Bob Smith', 'bob@example.com', customerHash, 'customer');
+  const customerUser1Id = await upsertUser(client, randomUUID(), 'Alice Johnson', 'alice@example.com', customerHash, 'user');
+  const customerUser2Id = await upsertUser(client, randomUUID(), 'Bob Smith', 'bob@example.com', customerHash, 'user');
 
   await client.end();
   console.log('✓ fems_auth seeded (admin@fems.local / Admin@123)');
@@ -111,6 +113,9 @@ async function seedExtinguishers(adminId, customerIds) {
 
   // Ensure the columns exist
   await client.query(`ALTER TABLE fire_extinguishers ADD COLUMN IF NOT EXISTS created_by UUID`);
+  await client.query(`ALTER TABLE fire_extinguishers ADD COLUMN IF NOT EXISTS location VARCHAR(200) DEFAULT 'Unassigned facility area'`);
+  await client.query(`ALTER TABLE fire_extinguishers ADD COLUMN IF NOT EXISTS size VARCHAR(50) DEFAULT '5lbs'`);
+  await client.query(`ALTER TABLE fire_extinguishers ADD COLUMN IF NOT EXISTS installation_date DATE DEFAULT CURRENT_DATE`);
   await client.query(`ALTER TABLE fire_extinguishers ALTER COLUMN customer_id DROP NOT NULL`);
 
   const today = new Date();
@@ -121,18 +126,18 @@ async function seedExtinguishers(adminId, customerIds) {
   };
 
   const extinguishers = [
-    { serial: 'FE-001', type: 'ABC Dry Powder',  capacity: '6kg', purchase: addDays(-730), expiry: addDays(45),   status: 'EXPIRING_SOON', customerId: customerIds.alice },
-    { serial: 'FE-002', type: 'CO2',              capacity: '5kg', purchase: addDays(-365), expiry: addDays(120),  status: 'ACTIVE',        customerId: customerIds.alice },
-    { serial: 'FE-003', type: 'Foam',             capacity: '9L',  purchase: addDays(-900), expiry: addDays(-10),  status: 'EXPIRED',       customerId: customerIds.alice },
-    { serial: 'FE-004', type: 'ABC Dry Powder',   capacity: '4kg', purchase: addDays(-400), expiry: addDays(15),   status: 'EXPIRING_SOON', customerId: customerIds.bob   },
-    { serial: 'FE-005', type: 'Water Mist',       capacity: '6L',  purchase: addDays(-200), expiry: addDays(200),  status: 'ACTIVE',        customerId: customerIds.bob   },
-    { serial: 'FE-006', type: 'CO2',              capacity: '2kg', purchase: addDays(-600), expiry: addDays(-45),  status: 'EXPIRED',       customerId: customerIds.bob   },
-    { serial: 'FE-007', type: 'ABC Dry Powder',   capacity: '6kg', purchase: addDays(-300), expiry: addDays(60),   status: 'EXPIRING_SOON', customerId: customerIds.carol },
-    { serial: 'FE-008', type: 'Foam',             capacity: '9L',  purchase: addDays(-100), expiry: addDays(365),  status: 'ACTIVE',        customerId: customerIds.carol },
-    { serial: 'FE-009', type: 'CO2',              capacity: '5kg', purchase: addDays(-800), expiry: addDays(-90),  status: 'EXPIRED',       customerId: customerIds.carol },
-    { serial: 'FE-010', type: 'ABC Dry Powder',   capacity: '2kg', purchase: addDays(-50),  expiry: addDays(7),    status: 'EXPIRING_SOON', customerId: customerIds.alice },
-    { serial: 'FE-FREE-01', type: 'CO2 Available',   capacity: '5kg', purchase: addDays(-10), expiry: addDays(400), status: 'ACTIVE', customerId: null },
-    { serial: 'FE-FREE-02', type: 'Foam Available',  capacity: '9L',  purchase: addDays(-5),  expiry: addDays(360), status: 'ACTIVE', customerId: null },
+    { serial: 'FE-001', type: 'Dry Chemical', size: '5lbs', location: 'Kigali HQ - Lobby', purchase: addDays(-730), expiry: addDays(45), status: 'EXPIRING_SOON', customerId: customerIds.alice },
+    { serial: 'FE-002', type: 'CO2', size: '5lbs', location: 'Kigali HQ - Server Room', purchase: addDays(-365), expiry: addDays(120), status: 'ACTIVE', customerId: customerIds.alice },
+    { serial: 'FE-003', type: 'Foam', size: '9lbs', location: 'Kigali HQ - Warehouse', purchase: addDays(-900), expiry: addDays(-10), status: 'EXPIRED', customerId: customerIds.alice },
+    { serial: 'FE-004', type: 'Dry Chemical', size: '12lbs', location: 'Musanze Plant - Bay 1', purchase: addDays(-400), expiry: addDays(15), status: 'EXPIRING_SOON', customerId: customerIds.bob },
+    { serial: 'FE-005', type: 'Water', size: '9lbs', location: 'Musanze Plant - Kitchen', purchase: addDays(-200), expiry: addDays(200), status: 'ACTIVE', customerId: customerIds.bob },
+    { serial: 'FE-006', type: 'CO2', size: '2.5lbs', location: 'Musanze Plant - Electrical', purchase: addDays(-600), expiry: addDays(-45), status: 'EXPIRED', customerId: customerIds.bob },
+    { serial: 'FE-007', type: 'Dry Chemical', size: '5lbs', location: 'Huye Depot - Gate', purchase: addDays(-300), expiry: addDays(60), status: 'EXPIRING_SOON', customerId: customerIds.carol },
+    { serial: 'FE-008', type: 'Foam', size: '9lbs', location: 'Huye Depot - Loading Dock', purchase: addDays(-100), expiry: addDays(365), status: 'ACTIVE', customerId: customerIds.carol },
+    { serial: 'FE-009', type: 'CO2', size: '5lbs', location: 'Huye Depot - Generator Room', purchase: addDays(-800), expiry: addDays(-90), status: 'EXPIRED', customerId: customerIds.carol },
+    { serial: 'FE-010', type: 'Dry Chemical', size: '2.5lbs', location: 'Kigali HQ - Reception', purchase: addDays(-50), expiry: addDays(7), status: 'EXPIRING_SOON', customerId: customerIds.alice },
+    { serial: 'FE-FREE-01', type: 'CO2', size: '5lbs', location: 'Available Stock - Shelf A', purchase: addDays(-10), expiry: addDays(400), status: 'ACTIVE', customerId: null },
+    { serial: 'FE-FREE-02', type: 'Foam', size: '9lbs', location: 'Available Stock - Shelf B', purchase: addDays(-5), expiry: addDays(360), status: 'ACTIVE', customerId: null },
   ];
 
   for (const ext of extinguishers) {
@@ -140,14 +145,14 @@ async function seedExtinguishers(adminId, customerIds) {
     const existing = await client.query('SELECT id FROM fire_extinguishers WHERE serial_number = $1', [ext.serial]);
     if (existing.rowCount > 0) {
       await client.query(
-        `UPDATE fire_extinguishers SET purchase_date=$1, expiry_date=$2, status=$3, customer_id=$4, updated_at=NOW() WHERE serial_number=$5`,
-        [ext.purchase, ext.expiry, ext.status, ext.customerId, ext.serial],
+        `UPDATE fire_extinguishers SET type=$1, location=$2, size=$3, capacity=$3, installation_date=$4, purchase_date=$4, expiry_date=$5, status=$6, customer_id=$7, updated_at=NOW() WHERE serial_number=$8`,
+        [ext.type, ext.location, ext.size, ext.purchase, ext.expiry, ext.status, ext.customerId, ext.serial],
       );
     } else {
       await client.query(
-        `INSERT INTO fire_extinguishers (id, serial_number, type, capacity, purchase_date, expiry_date, status, customer_id, created_by, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())`,
-        [randomUUID(), ext.serial, ext.type, ext.capacity, ext.purchase, ext.expiry, ext.status, ext.customerId, adminId],
+        `INSERT INTO fire_extinguishers (id, serial_number, type, location, size, capacity, installation_date, purchase_date, expiry_date, status, customer_id, created_by, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $5, $6, $6, $7, $8, $9, $10, NOW(), NOW())`,
+        [randomUUID(), ext.serial, ext.type, ext.location, ext.size, ext.purchase, ext.expiry, ext.status, ext.customerId, adminId],
       );
     }
   }

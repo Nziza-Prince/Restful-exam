@@ -3,12 +3,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { paginate, PaginatedResult } from '@fems/shared';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { ExtinguisherFilterOptions } from '../dtos/list-extinguishers-query.dto';
 import { CreateExtinguisherDto } from '../dtos/create-extinguisher.dto';
+import { ScheduleInspectionDto, UpdateInspectionDto } from '../dtos/inspection.dto';
+import { LogMaintenanceDto } from '../dtos/maintenance.dto';
 import { RenewExtinguisherDto } from '../dtos/update-extinguisher.dto';
 import { UpdateExtinguisherDto } from '../dtos/update-extinguisher.dto';
+import { ExtinguisherInspection } from '../entities/extinguisher-inspection.entity';
 import { ExtinguisherStatus } from '../entities/extinguisher-status.enum';
 import { FireExtinguisher } from '../entities/fire-extinguisher.entity';
+import { MaintenanceLog } from '../entities/maintenance-log.entity';
 import { ExtinguishersRepository } from '../repositories/extinguishers.repository';
 
 export function computeExtinguisherStatus(
@@ -52,12 +58,22 @@ function startOfDay(date: Date): Date {
 
 @Injectable()
 export class ExtinguishersService {
-  constructor(private readonly extinguishersRepo: ExtinguishersRepository) {}
+  constructor(
+    private readonly extinguishersRepo: ExtinguishersRepository,
+    @InjectRepository(ExtinguisherInspection)
+    private readonly inspectionsRepo: Repository<ExtinguisherInspection>,
+    @InjectRepository(MaintenanceLog)
+    private readonly maintenanceRepo: Repository<MaintenanceLog>,
+  ) {}
 
   async create(dto: CreateExtinguisherDto, createdBy?: string): Promise<FireExtinguisher> {
-    const status = computeExtinguisherStatus(dto.expiryDate);
+    const status = dto.status ?? computeExtinguisherStatus(dto.expiryDate);
     const extinguisher = this.extinguishersRepo.create({
       ...dto,
+      size: dto.size ?? dto.capacity,
+      capacity: dto.capacity ?? dto.size,
+      installationDate: dto.installationDate ?? dto.purchaseDate,
+      purchaseDate: dto.purchaseDate ?? dto.installationDate,
       customerId: dto.customerId && dto.customerId !== '' ? dto.customerId : null,
       status,
       createdBy: createdBy || null,
@@ -133,9 +149,22 @@ export class ExtinguishersService {
       extinguisher.serialNumber = dto.serialNumber;
     }
     if (dto.type !== undefined) extinguisher.type = dto.type;
-    if (dto.capacity !== undefined) extinguisher.capacity = dto.capacity;
+    if (dto.location !== undefined) extinguisher.location = dto.location;
+    if (dto.size !== undefined) {
+      extinguisher.size = dto.size;
+      extinguisher.capacity = dto.size;
+    }
+    if (dto.capacity !== undefined) {
+      extinguisher.capacity = dto.capacity;
+      extinguisher.size = dto.capacity;
+    }
+    if (dto.installationDate !== undefined) {
+      extinguisher.installationDate = dto.installationDate;
+      extinguisher.purchaseDate = dto.installationDate;
+    }
     if (dto.purchaseDate !== undefined) {
       extinguisher.purchaseDate = dto.purchaseDate;
+      extinguisher.installationDate = dto.purchaseDate;
     }
     if (dto.customerId !== undefined) extinguisher.customerId = dto.customerId;
     if (dto.expiryDate !== undefined) {
@@ -157,6 +186,87 @@ export class ExtinguishersService {
   async remove(id: string): Promise<void> {
     const extinguisher = await this.findById(id);
     await this.extinguishersRepo.remove(extinguisher);
+  }
+
+  async scheduleInspection(
+    extinguisherId: string,
+    dto: ScheduleInspectionDto,
+    requestedBy: string,
+  ): Promise<ExtinguisherInspection> {
+    await this.findById(extinguisherId);
+    const inspection = this.inspectionsRepo.create({
+      extinguisherId,
+      scheduledAt: new Date(dto.scheduledAt),
+      requestedBy,
+      inspectorId: dto.inspectorId ?? null,
+      notes: dto.notes ?? null,
+    });
+    return this.inspectionsRepo.save(inspection);
+  }
+
+  async listInspections(
+    page: number,
+    limit: number,
+    extinguisherId?: string,
+  ): Promise<PaginatedResult<ExtinguisherInspection>> {
+    const qb = this.inspectionsRepo
+      .createQueryBuilder('i')
+      .orderBy('i.scheduledAt', 'DESC');
+    if (extinguisherId) qb.andWhere('i.extinguisherId = :extinguisherId', { extinguisherId });
+    const [data, total] = await qb.skip((page - 1) * limit).take(limit).getManyAndCount();
+    return paginate(data, total, page, limit);
+  }
+
+  async updateInspection(id: string, dto: UpdateInspectionDto): Promise<ExtinguisherInspection> {
+    const inspection = await this.inspectionsRepo.findOne({ where: { id } });
+    if (!inspection) throw new NotFoundException('Inspection not found');
+    if (dto.status !== undefined) inspection.status = dto.status;
+    if (dto.inspectorId !== undefined) inspection.inspectorId = dto.inspectorId;
+    if (dto.notes !== undefined) inspection.notes = dto.notes;
+    return this.inspectionsRepo.save(inspection);
+  }
+
+  async logMaintenance(
+    extinguisherId: string,
+    dto: LogMaintenanceDto,
+    loggedBy: string,
+  ): Promise<MaintenanceLog> {
+    await this.findById(extinguisherId);
+    const log = this.maintenanceRepo.create({
+      extinguisherId,
+      actionsTaken: dto.actionsTaken,
+      actionDate: dto.actionDate,
+      conditionsNoted: dto.conditionsNoted,
+      loggedBy,
+    });
+    return this.maintenanceRepo.save(log);
+  }
+
+  async listMaintenance(
+    page: number,
+    limit: number,
+    extinguisherId?: string,
+  ): Promise<PaginatedResult<MaintenanceLog>> {
+    const qb = this.maintenanceRepo
+      .createQueryBuilder('m')
+      .orderBy('m.actionDate', 'DESC');
+    if (extinguisherId) qb.andWhere('m.extinguisherId = :extinguisherId', { extinguisherId });
+    const [data, total] = await qb.skip((page - 1) * limit).take(limit).getManyAndCount();
+    return paginate(data, total, page, limit);
+  }
+
+  async inspectionStatusReport(): Promise<Record<string, unknown>[]> {
+    const rows = await this.inspectionsRepo
+      .createQueryBuilder('i')
+      .select('i.status', 'status')
+      .addSelect('COUNT(*)::int', 'count')
+      .groupBy('i.status')
+      .getRawMany();
+    return rows;
+  }
+
+  async maintenanceHistoryReport(): Promise<MaintenanceLog[]> {
+    return this.maintenanceRepo.find({ order: { actionDate: 'DESC' }, take: 1000 });
   }
 
   async findAllForCron(): Promise<FireExtinguisher[]> {

@@ -18,9 +18,9 @@ export function createTypeOrmConfig(
   return {
     ...base,
     host: config.get<string>('DB_HOST', 'localhost'),
-    port: config.get<number>('DB_PORT', 5433),
-    username: config.get<string>('DB_USERNAME', 'postgres'),
-    password: config.get<string>('DB_PASSWORD', '12345'),
+    port: config.get<number>('DB_PORT', 5432),
+    username: config.get<string>('DB_USERNAME', 'exam'),
+    password: config.get<string>('DB_PASSWORD', 'exam'),
     database: config.get<string>('DB_DATABASE', 'fems'),
   };
 }

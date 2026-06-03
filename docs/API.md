@@ -11,6 +11,35 @@ All protected endpoints require `Authorization: Bearer <accessToken>`.
 ### POST /auth/register
 Register a customer account.
 
+Updated requirement endpoints:
+
+| Method | Path | Role | Purpose |
+|---|---|---|---|
+| POST | /auth/register | Public | Register with firstName, lastName, email, password, optional role=user/inspector |
+| POST | /auth/login | Public | Login and receive JWT access + refresh tokens |
+| POST | /auth/logout | Authenticated | Revoke refresh token |
+| POST | /auth/forgot-password | Public | Generate password reset token |
+| POST | /auth/reset-password | Public | Reset password with token |
+| GET | /users/me | Authenticated | View profile |
+| PATCH | /users/me | Authenticated | Update firstName, lastName, or email |
+| POST | /users/me/change-password | Authenticated | Change password |
+| POST | /extinguishers | Admin | Register extinguisher: serialNumber, location, type, size, installationDate, expiryDate, status |
+| GET | /extinguishers | Admin/User/Inspector | Paginated extinguisher list |
+| GET | /extinguishers/:id | Admin/User/Inspector | Extinguisher details |
+| PATCH | /extinguishers/:id | Admin | Update extinguisher |
+| DELETE | /extinguishers/:id | Admin | Remove extinguisher |
+| POST | /extinguishers/:id/inspections | Admin/User/Inspector | Schedule inspection and trigger notification when assigned |
+| GET | /extinguishers/:id/inspections | Admin/Inspector | Paginated inspection list |
+| PATCH | /extinguishers/inspections/:inspectionId | Admin/Inspector | Update inspection status/assignment |
+| POST | /extinguishers/:id/maintenance | Admin/Inspector | Log actions taken, action date, and conditions noted |
+| GET | /extinguishers/:id/maintenance | Admin/Inspector | Paginated maintenance history |
+| GET | /reports/total-stock | Admin | Total extinguisher count |
+| GET | /reports/daily | Admin | Daily extinguisher report, export with ?format=csv/pdf |
+| GET | /reports/monthly | Admin | Monthly extinguisher report, export with ?format=csv/pdf |
+| GET | /reports/yearly | Admin | Yearly extinguisher report, export with ?format=csv/pdf |
+| GET | /reports/inspection-status | Admin | Inspection status report |
+| GET | /reports/maintenance-history | Admin | Maintenance history export |
+
 ```json
 {
   "fullName": "Alice Johnson",

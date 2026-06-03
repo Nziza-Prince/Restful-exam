@@ -48,6 +48,26 @@ export class ExtinguisherClient {
     return this.extractRows(data);
   }
 
+  async getInspectionStatus(params?: Record<string, any>) {
+    const { data } = await firstValueFrom(
+      this.http.get(`${this.baseUrl}/api/internal/extinguishers/inspection-status`, {
+        headers: this.headers,
+        params,
+      }),
+    );
+    return this.extractRows(data);
+  }
+
+  async getMaintenanceHistory(params?: Record<string, any>) {
+    const { data } = await firstValueFrom(
+      this.http.get(`${this.baseUrl}/api/internal/extinguishers/maintenance-history`, {
+        headers: this.headers,
+        params,
+      }),
+    );
+    return this.extractRows(data);
+  }
+
   private extractRows(data: unknown): Record<string, unknown>[] {
     if (Array.isArray(data)) return data as Record<string, unknown>[];
     if (data && typeof data === 'object' && 'data' in data) {

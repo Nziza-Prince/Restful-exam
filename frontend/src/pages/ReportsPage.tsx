@@ -34,6 +34,31 @@ const reports: { type: ReportType; title: string; description: string }[] = [
     title: 'Notifications',
     description: 'Notification delivery history',
   },
+  {
+    type: 'daily',
+    title: 'Daily Extinguisher Report',
+    description: 'Daily registration and stock activity',
+  },
+  {
+    type: 'monthly',
+    title: 'Monthly Extinguisher Report',
+    description: 'Monthly extinguisher trends',
+  },
+  {
+    type: 'yearly',
+    title: 'Yearly Extinguisher Report',
+    description: 'Yearly extinguisher trends',
+  },
+  {
+    type: 'inspection-status',
+    title: 'Inspection Status',
+    description: 'Scheduled, completed, and cancelled inspections',
+  },
+  {
+    type: 'maintenance-history',
+    title: 'Maintenance History',
+    description: 'Inspector maintenance action history',
+  },
 ];
 
 export function ReportsPage() {

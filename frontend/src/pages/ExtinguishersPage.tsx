@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Badge, DataTable, PageHeader, type Column } from '@/components/ui/DataTable';
 import { Button } from '@/components/ui/Button';
-import { Input, Select } from '@/components/ui/Input';
+import { Input, Select, TextArea } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/hooks/useAuth';
+import { extinguisherService } from '@/services/extinguisherService';
 import type { ExtinguisherStatus, FireExtinguisher } from '@/types';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
@@ -27,8 +28,9 @@ const statusTone = (status: ExtinguisherStatus) => {
 const emptyForm = {
   serialNumber: '',
   type: '',
-  capacity: '',
-  purchaseDate: '',
+  location: '',
+  size: '',
+  installationDate: '',
   expiryDate: '',
   customerId: '',
   status: 'ACTIVE' as ExtinguisherStatus,
@@ -41,7 +43,7 @@ function today() {
 
 export function ExtinguishersPage() {
   const dispatch = useAppDispatch();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isInspector } = useAuth();
   const { items, meta, loading, saving, error } = useAppSelector((state) => state.extinguishers);
   const customers = useAppSelector((state) => state.customers.items);
   const [page, setPage] = useState(1);
@@ -50,8 +52,17 @@ export function ExtinguishersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<FireExtinguisher | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [formErrors, setFormErrors] = useState<{ purchaseDate?: string; expiryDate?: string }>({});
+  const [formErrors, setFormErrors] = useState<{ installationDate?: string; expiryDate?: string }>({});
   const [tab, setTab] = useState<'mine' | 'available'>('mine');
+  const [details, setDetails] = useState<FireExtinguisher | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState('');
+  const [inspectionTarget, setInspectionTarget] = useState<FireExtinguisher | null>(null);
+  const [inspectionDateTime, setInspectionDateTime] = useState('');
+  const [inspectionNotes, setInspectionNotes] = useState('');
+  const [inspectionSaving, setInspectionSaving] = useState(false);
+  const [inspectionError, setInspectionError] = useState('');
+  const [inspectionMessage, setInspectionMessage] = useState('');
 
   // Assign modal state
   const [assignTarget, setAssignTarget] = useState<FireExtinguisher | null>(null);
@@ -61,7 +72,7 @@ export function ExtinguishersPage() {
   const reload = () =>
     dispatch(
       fetchExtinguishers({
-        scope: isAdmin ? 'admin' : tab === 'mine' ? 'customer' : 'admin',
+        scope: isAdmin || isInspector ? 'admin' : tab === 'mine' ? 'customer' : 'admin',
         page,
         limit: 10,
         search: search || undefined,
@@ -71,21 +82,21 @@ export function ExtinguishersPage() {
 
   useEffect(() => {
     reload();
-  }, [dispatch, isAdmin, tab, page, search, status]);
+  }, [dispatch, isAdmin, isInspector, tab, page, search, status]);
 
   useEffect(() => {
     if (isAdmin) dispatch(fetchCustomers({ page: 1, limit: 100 }));
   }, [dispatch, isAdmin]);
 
   const validateDates = (f: typeof form) => {
-    const errors: { purchaseDate?: string; expiryDate?: string } = {};
+    const errors: { installationDate?: string; expiryDate?: string } = {};
     const todayStr = today();
 
-    if (f.purchaseDate && f.purchaseDate > todayStr) {
-      errors.purchaseDate = 'Purchase date cannot be a future date.';
+    if (f.installationDate && f.installationDate > todayStr) {
+      errors.installationDate = 'Installation date cannot be a future date.';
     }
-    if (f.purchaseDate && f.expiryDate && f.expiryDate <= f.purchaseDate) {
-      errors.expiryDate = 'Expiry date must be after the purchase date.';
+    if (f.installationDate && f.expiryDate && f.expiryDate <= f.installationDate) {
+      errors.expiryDate = 'Expiry date must be after the installation date.';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -103,8 +114,9 @@ export function ExtinguishersPage() {
     setForm({
       serialNumber: item.serialNumber,
       type: item.type,
-      capacity: item.capacity,
-      purchaseDate: item.purchaseDate,
+      location: item.location,
+      size: item.size,
+      installationDate: item.installationDate,
       expiryDate: item.expiryDate,
       customerId: item.customerId || '',
       status: item.status,
@@ -119,12 +131,56 @@ export function ExtinguishersPage() {
     if (editing) {
       await dispatch(updateExtinguisher({ id: editing.id, payload: form }));
     } else {
-      // Strip `status` (server computes from expiryDate) and omit empty customerId
-      const { status: _s, customerId, ...rest } = form;
+      const { customerId, ...rest } = form;
       await dispatch(createExtinguisher({ ...rest, customerId: customerId || undefined }));
     }
     setModalOpen(false);
     reload();
+  };
+
+  const openDetails = async (row: FireExtinguisher) => {
+    setDetails(row);
+    setDetailsError('');
+    setDetailsLoading(true);
+    try {
+      setDetails(await extinguisherService.getById(row.id));
+    } catch (error) {
+      setDetailsError((error as Error).message);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const openInspection = (row: FireExtinguisher) => {
+    setInspectionTarget(row);
+    setInspectionDateTime('');
+    setInspectionNotes('');
+    setInspectionError('');
+    setInspectionMessage('');
+  };
+
+  const scheduleInspection = async () => {
+    if (!inspectionTarget) return;
+    if (!inspectionDateTime) {
+      setInspectionError('Choose an inspection date and time.');
+      return;
+    }
+
+    setInspectionSaving(true);
+    setInspectionError('');
+    setInspectionMessage('');
+
+    try {
+      await extinguisherService.scheduleInspection(inspectionTarget.id, {
+        scheduledAt: new Date(inspectionDateTime).toISOString(),
+        notes: inspectionNotes || undefined,
+      });
+      setInspectionMessage('Inspection scheduled successfully.');
+    } catch (error) {
+      setInspectionError((error as Error).message);
+    } finally {
+      setInspectionSaving(false);
+    }
   };
 
   const handleAssign = async () => {
@@ -147,7 +203,8 @@ export function ExtinguishersPage() {
   const adminColumns: Column<FireExtinguisher>[] = [
     { key: 'serialNumber', header: 'Serial' },
     { key: 'type', header: 'Type' },
-    { key: 'capacity', header: 'Capacity' },
+    { key: 'location', header: 'Location' },
+    { key: 'size', header: 'Size' },
     {
       key: 'expiryDate',
       header: 'Expiry',
@@ -175,6 +232,12 @@ export function ExtinguishersPage() {
       header: 'Actions',
       render: (row) => (
         <div className="flex flex-wrap gap-1.5">
+          <Button size="sm" variant="secondary" onClick={() => openDetails(row)}>
+            View
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => openInspection(row)}>
+            Schedule
+          </Button>
           <Button
             size="sm"
             variant="ghost"
@@ -200,7 +263,8 @@ export function ExtinguishersPage() {
   const customerAvailableColumns: Column<FireExtinguisher>[] = [
     { key: 'serialNumber', header: 'Serial' },
     { key: 'type', header: 'Type' },
-    { key: 'capacity', header: 'Capacity' },
+    { key: 'location', header: 'Location' },
+    { key: 'size', header: 'Size' },
     {
       key: 'expiryDate',
       header: 'Expiry',
@@ -215,15 +279,20 @@ export function ExtinguishersPage() {
       key: 'actions',
       header: 'Actions',
       render: (row) => (
-        <Button
-          size="sm"
-          onClick={async () => {
-            await dispatch(buyExtinguisher(row.id));
-            reload();
-          }}
-        >
-          Buy
-        </Button>
+        <div className="flex flex-wrap gap-1.5">
+          <Button size="sm" variant="secondary" onClick={() => openDetails(row)}>
+            View
+          </Button>
+          <Button
+            size="sm"
+            onClick={async () => {
+              await dispatch(buyExtinguisher(row.id));
+              reload();
+            }}
+          >
+            Buy
+          </Button>
+        </div>
       ),
     },
   ];
@@ -231,7 +300,8 @@ export function ExtinguishersPage() {
   const customerMineColumns: Column<FireExtinguisher>[] = [
     { key: 'serialNumber', header: 'Serial' },
     { key: 'type', header: 'Type' },
-    { key: 'capacity', header: 'Capacity' },
+    { key: 'location', header: 'Location' },
+    { key: 'size', header: 'Size' },
     {
       key: 'expiryDate',
       header: 'Expiry',
@@ -242,10 +312,57 @@ export function ExtinguishersPage() {
       header: 'Status',
       render: (row) => <Badge tone={statusTone(row.status)}>{row.status}</Badge>,
     },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => (
+        <div className="flex flex-wrap gap-1.5">
+          <Button size="sm" variant="secondary" onClick={() => openDetails(row)}>
+            View
+          </Button>
+          <Button size="sm" onClick={() => openInspection(row)}>
+            Schedule
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  const inspectorColumns: Column<FireExtinguisher>[] = [
+    { key: 'serialNumber', header: 'Serial' },
+    { key: 'type', header: 'Type' },
+    { key: 'location', header: 'Location' },
+    { key: 'size', header: 'Size' },
+    {
+      key: 'expiryDate',
+      header: 'Expiry',
+      render: (row) => <span className="font-mono text-xs">{formatDate(row.expiryDate)}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => <Badge tone={statusTone(row.status)}>{row.status}</Badge>,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => (
+        <div className="flex flex-wrap gap-1.5">
+          <Button size="sm" variant="secondary" onClick={() => openDetails(row)}>
+            View
+          </Button>
+          <Button size="sm" onClick={() => openInspection(row)}>
+            Schedule
+          </Button>
+        </div>
+      ),
+    },
   ];
 
   const columns = isAdmin
     ? adminColumns
+    : isInspector
+    ? inspectorColumns
     : tab === 'available'
     ? customerAvailableColumns
     : customerMineColumns;
@@ -256,6 +373,8 @@ export function ExtinguishersPage() {
         title={
           isAdmin
             ? 'Extinguishers'
+            : isInspector
+            ? 'Extinguishers'
             : tab === 'mine'
             ? 'My Extinguishers'
             : 'Browse Extinguishers'
@@ -263,6 +382,8 @@ export function ExtinguishersPage() {
         description={
           isAdmin
             ? 'Manage and assign fire extinguisher inventory'
+            : isInspector
+            ? 'Review extinguisher details and schedule inspections'
             : tab === 'mine'
             ? 'Your registered fire extinguishers'
             : 'Available extinguishers you can acquire'
@@ -271,7 +392,7 @@ export function ExtinguishersPage() {
       />
 
       {/* Customer tabs */}
-      {!isAdmin && (
+      {!isAdmin && !isInspector && (
         <div className="mb-4 flex border-b border-zinc-200 dark:border-zinc-800">
           {(['mine', 'available'] as const).map((t) => (
             <button
@@ -348,37 +469,56 @@ export function ExtinguishersPage() {
               onChange={(e) => setForm({ ...form, serialNumber: e.target.value })}
               required
             />
-            <Input
+            <Select
               label="Type"
-              placeholder="e.g. CO2, Dry Chemical, Water"
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })}
+              options={[
+                { value: '', label: 'Select type' },
+                { value: 'Water', label: 'Water' },
+                { value: 'CO2', label: 'CO2' },
+                { value: 'Foam', label: 'Foam' },
+                { value: 'Dry Chemical', label: 'Dry Chemical' },
+              ]}
               required
             />
             <Input
-              label="Capacity"
-              placeholder="e.g. 6kg, 9L"
-              value={form.capacity}
-              onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+              label="Location"
+              placeholder="Building A - Lobby"
+              value={form.location}
+              onChange={(e) => setForm({ ...form, location: e.target.value })}
+              required
+            />
+            <Select
+              label="Size"
+              value={form.size}
+              onChange={(e) => setForm({ ...form, size: e.target.value })}
+              options={[
+                { value: '', label: 'Select size' },
+                { value: '2.5lbs', label: '2.5lbs' },
+                { value: '5lbs', label: '5lbs' },
+                { value: '9lbs', label: '9lbs' },
+                { value: '12lbs', label: '12lbs' },
+              ]}
               required
             />
             <Input
-              label="Purchase date"
+              label="Installation date"
               type="date"
               max={today()}
-              value={form.purchaseDate}
+              value={form.installationDate}
               onChange={(e) => {
-                const updated = { ...form, purchaseDate: e.target.value };
+                const updated = { ...form, installationDate: e.target.value };
                 setForm(updated);
                 validateDates(updated);
               }}
-              error={formErrors.purchaseDate}
+              error={formErrors.installationDate}
               required
             />
             <Input
               label="Expiry date"
               type="date"
-              min={form.purchaseDate ? form.purchaseDate : undefined}
+              min={form.installationDate ? form.installationDate : undefined}
               value={form.expiryDate}
               onChange={(e) => {
                 const updated = { ...form, expiryDate: e.target.value };
@@ -399,22 +539,103 @@ export function ExtinguishersPage() {
                 ]}
               />
             )}
-            {editing && (
-              <Select
-                label="Status"
-                value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value as ExtinguisherStatus })}
-                options={[
-                  { value: 'ACTIVE', label: 'Active' },
-                  { value: 'EXPIRING_SOON', label: 'Expiring Soon' },
-                  { value: 'EXPIRED', label: 'Expired' },
-                  { value: 'RENEWED', label: 'Renewed' },
-                ]}
-              />
-            )}
+            <Select
+              label="Status"
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value as ExtinguisherStatus })}
+              options={[
+                { value: 'ACTIVE', label: 'Active' },
+                { value: 'EXPIRING_SOON', label: 'Expiring Soon' },
+                { value: 'EXPIRED', label: 'Expired' },
+                { value: 'RENEWED', label: 'Renewed' },
+              ]}
+            />
           </div>
         </Modal>
       )}
+
+      <Modal
+        open={!!details}
+        onClose={() => {
+          setDetails(null);
+          setDetailsError('');
+        }}
+        title="Extinguisher Details"
+        description={details ? `Serial: ${details.serialNumber}` : undefined}
+        size="lg"
+      >
+        {detailsError && (
+          <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+            {detailsError}
+          </p>
+        )}
+        {detailsLoading && <p className="text-sm text-zinc-500">Loading latest details...</p>}
+        {details && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Detail label="Serial number" value={details.serialNumber} />
+            <Detail label="Status" value={details.status} />
+            <Detail label="Type" value={details.type} />
+            <Detail label="Size" value={details.size} />
+            <Detail label="Location" value={details.location} />
+            <Detail label="Assigned to" value={customers.find((c) => c.id === details.customerId)?.fullName ?? (details.customerId ? details.customerId : 'Unassigned')} />
+            <Detail label="Installation date" value={formatDate(details.installationDate)} />
+            <Detail label="Expiry date" value={formatDate(details.expiryDate)} />
+            <Detail label="Created" value={formatDate(details.createdAt)} />
+            <Detail label="Last updated" value={formatDate(details.updatedAt)} />
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!inspectionTarget}
+        onClose={() => setInspectionTarget(null)}
+        title="Schedule Inspection"
+        description={
+          inspectionTarget
+            ? `${inspectionTarget.serialNumber} - ${inspectionTarget.location}`
+            : undefined
+        }
+        footer={
+          <div className="flex justify-end gap-2 border-t border-zinc-100 px-5 py-3 dark:border-zinc-800">
+            <Button variant="secondary" onClick={() => setInspectionTarget(null)}>
+              Close
+            </Button>
+            <Button loading={inspectionSaving} onClick={scheduleInspection}>
+              Schedule inspection
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          {inspectionError && (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+              {inspectionError}
+            </p>
+          )}
+          {inspectionMessage && (
+            <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-sm text-green-700 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-400">
+              {inspectionMessage}
+            </p>
+          )}
+          <Input
+            label="Inspection date and time"
+            type="datetime-local"
+            value={inspectionDateTime}
+            min={new Date().toISOString().slice(0, 16)}
+            onChange={(e) => {
+              setInspectionDateTime(e.target.value);
+              setInspectionError('');
+            }}
+            required
+          />
+          <TextArea
+            label="Notes"
+            value={inspectionNotes}
+            onChange={(e) => setInspectionNotes(e.target.value)}
+            placeholder="Access instructions, preferred inspector, or safety notes"
+          />
+        </div>
+      </Modal>
 
       {/* ── Assign modal ──────────────────────────────────────────── */}
       {isAdmin && (
@@ -468,6 +689,15 @@ export function ExtinguishersPage() {
           </div>
         </Modal>
       )}
+    </div>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950/50">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="mt-1 break-words text-sm font-medium text-zinc-900 dark:text-zinc-100">{value}</p>
     </div>
   );
 }

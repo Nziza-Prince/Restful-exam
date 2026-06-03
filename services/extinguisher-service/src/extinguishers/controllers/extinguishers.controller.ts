@@ -22,14 +22,17 @@ import {
   Roles,
   RolesGuard,
   UserRole,
+  PaginationQueryDto,
 } from '@fems/shared';
 import { CustomerClient, NotificationClient } from '../../clients/service.clients';
 import { AssignExtinguisherDto } from '../dtos/assign-extinguisher.dto';
 import { CreateExtinguisherDto } from '../dtos/create-extinguisher.dto';
+import { ScheduleInspectionDto, UpdateInspectionDto } from '../dtos/inspection.dto';
 import {
   ListExtinguishersQueryDto,
   ListMineExtinguishersQueryDto,
 } from '../dtos/list-extinguishers-query.dto';
+import { LogMaintenanceDto } from '../dtos/maintenance.dto';
 import { UpdateExtinguisherDto } from '../dtos/update-extinguisher.dto';
 import { ExtinguishersService } from '../services/extinguishers.service';
 
@@ -45,8 +48,8 @@ export class ExtinguishersController {
   ) {}
 
   @Get('mine')
-  @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'List owned extinguishers (customer)' })
+  @Roles(UserRole.USER)
+  @ApiOperation({ summary: 'List owned extinguishers (user)' })
   async findMine(
     @CurrentUser() user: JwtPayload,
     @Query() query: ListMineExtinguishersQueryDto,
@@ -108,8 +111,8 @@ export class ExtinguishersController {
   }
 
   @Patch(':id/buy')
-  @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Buy an unassigned fire extinguisher (customer)' })
+  @Roles(UserRole.USER)
+  @ApiOperation({ summary: 'Buy an unassigned fire extinguisher (user)' })
   async buy(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     const customer = await this.customerClient.findByEmail(user.email);
     if (!customer) {
@@ -119,13 +122,23 @@ export class ExtinguishersController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.CUSTOMER)
+  @Roles(UserRole.ADMIN, UserRole.USER, UserRole.INSPECTOR)
   @ApiOperation({ summary: 'List extinguishers with filters' })
   findAll(@CurrentUser() user: JwtPayload, @Query() query: ListExtinguishersQueryDto) {
-    if (user.role === UserRole.CUSTOMER) {
+    if (user.role === UserRole.USER) {
       return this.extinguishersService.findAll(query.page ?? 1, query.limit ?? 10, {
         status: query.status,
         onlyAvailable: true,
+        expiryFrom: query.expiryFrom,
+        expiryTo: query.expiryTo,
+        search: query.search,
+      });
+    }
+
+    if (user.role === UserRole.INSPECTOR) {
+      return this.extinguishersService.findAll(query.page ?? 1, query.limit ?? 10, {
+        status: query.status,
+        customerId: query.customerId,
         expiryFrom: query.expiryFrom,
         expiryTo: query.expiryTo,
         search: query.search,
@@ -143,10 +156,26 @@ export class ExtinguishersController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get extinguisher by ID (admin)' })
+  @Roles(UserRole.ADMIN, UserRole.USER, UserRole.INSPECTOR)
+  @ApiOperation({ summary: 'Get extinguisher by ID' })
   async findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     const extinguisher = await this.extinguishersService.findById(id);
+
+    if (user.role === UserRole.INSPECTOR) {
+      return extinguisher;
+    }
+
+    if (user.role === UserRole.USER) {
+      const customer = await this.customerClient.findByEmail(user.email);
+      if (!customer) {
+        throw new NotFoundException('Customer profile not found');
+      }
+      if (extinguisher.customerId === null || extinguisher.customerId === customer.id) {
+        return extinguisher;
+      }
+      throw new NotFoundException('Fire extinguisher not found');
+    }
+
     if (extinguisher.createdBy !== user.sub) {
       throw new NotFoundException('Fire extinguisher not found');
     }
@@ -177,5 +206,60 @@ export class ExtinguishersController {
       throw new NotFoundException('Fire extinguisher not found');
     }
     return this.extinguishersService.remove(id);
+  }
+
+  @Post(':id/inspections')
+  @Roles(UserRole.ADMIN, UserRole.USER, UserRole.INSPECTOR)
+  @ApiOperation({ summary: 'Schedule an extinguisher inspection' })
+  async scheduleInspection(
+    @Param('id') id: string,
+    @Body() dto: ScheduleInspectionDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const inspection = await this.extinguishersService.scheduleInspection(id, dto, user.sub);
+    const extinguisher = await this.extinguishersService.findById(id);
+    if (extinguisher.customerId) {
+      this.notificationClient
+        .triggerNotification({
+          customerId: extinguisher.customerId,
+          extinguisherId: id,
+          type: 'INSPECTION_SCHEDULED',
+          message: `Inspection scheduled for extinguisher ${extinguisher.serialNumber} on ${dto.scheduledAt}.`,
+        })
+        .catch(() => {});
+    }
+    return inspection;
+  }
+
+  @Get(':id/inspections')
+  @Roles(UserRole.ADMIN, UserRole.INSPECTOR)
+  @ApiOperation({ summary: 'List inspections for an extinguisher' })
+  listInspections(@Param('id') id: string, @Query() query: PaginationQueryDto) {
+    return this.extinguishersService.listInspections(query.page ?? 1, query.limit ?? 10, id);
+  }
+
+  @Patch('inspections/:inspectionId')
+  @Roles(UserRole.ADMIN, UserRole.INSPECTOR)
+  @ApiOperation({ summary: 'Update inspection status or assignment' })
+  updateInspection(@Param('inspectionId') inspectionId: string, @Body() dto: UpdateInspectionDto) {
+    return this.extinguishersService.updateInspection(inspectionId, dto);
+  }
+
+  @Post(':id/maintenance')
+  @Roles(UserRole.ADMIN, UserRole.INSPECTOR)
+  @ApiOperation({ summary: 'Log maintenance actions for an extinguisher' })
+  logMaintenance(
+    @Param('id') id: string,
+    @Body() dto: LogMaintenanceDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.extinguishersService.logMaintenance(id, dto, user.sub);
+  }
+
+  @Get(':id/maintenance')
+  @Roles(UserRole.ADMIN, UserRole.INSPECTOR)
+  @ApiOperation({ summary: 'List maintenance history for an extinguisher' })
+  listMaintenance(@Param('id') id: string, @Query() query: PaginationQueryDto) {
+    return this.extinguishersService.listMaintenance(query.page ?? 1, query.limit ?? 10, id);
   }
 }

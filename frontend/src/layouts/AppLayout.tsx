@@ -84,6 +84,15 @@ function IconSettings() {
   );
 }
 
+function IconUser() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-4 w-4">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function IconLogout() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-4 w-4">
@@ -114,29 +123,36 @@ function IconMoon() {
 
 const adminLinks = [
   { to: '/dashboard', label: 'Dashboard', Icon: IconGrid },
-  { to: '/customers', label: 'Customers', Icon: IconPeople },
+  { to: '/customers', label: 'Users', Icon: IconPeople },
   { to: '/extinguishers', label: 'Extinguishers', Icon: IconCylinder },
   { to: '/notifications', label: 'Notifications', Icon: IconBell },
   { to: '/renewals', label: 'Renewals', Icon: IconRefresh },
   { to: '/compliance', label: 'Compliance', Icon: IconShield },
   { to: '/reports', label: 'Reports', Icon: IconDocument },
   { to: '/settings', label: 'Settings', Icon: IconSettings },
+  { to: '/profile', label: 'Profile', Icon: IconUser },
 ];
 
 const customerLinks = [
   { to: '/dashboard', label: 'Dashboard', Icon: IconGrid },
   { to: '/extinguishers', label: 'My Extinguishers', Icon: IconCylinder },
   { to: '/notifications', label: 'Notifications', Icon: IconBell },
-  { to: '/renewals', label: 'Renewals', Icon: IconRefresh },
+  { to: '/profile', label: 'Profile', Icon: IconUser },
+];
+
+const inspectorLinks = [
+  { to: '/dashboard', label: 'Dashboard', Icon: IconGrid },
+  { to: '/extinguishers', label: 'Extinguishers', Icon: IconCylinder },
+  { to: '/profile', label: 'Profile', Icon: IconUser },
 ];
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 export function Sidebar() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isInspector } = useAuth();
   const { toggleTheme, isDark } = useDarkMode();
   const dispatch = useAppDispatch();
-  const links = isAdmin ? adminLinks : customerLinks;
+  const links = isAdmin ? adminLinks : isInspector ? inspectorLinks : customerLinks;
 
   return (
     <aside className="flex h-full w-60 flex-col bg-zinc-950">
@@ -196,9 +212,17 @@ export function Sidebar() {
         <div className="mb-3 rounded-lg bg-zinc-900 px-3 py-2.5">
           <p className="truncate text-sm font-medium text-zinc-200">{user?.fullName}</p>
           <p className="truncate text-xs text-zinc-500">{user?.email}</p>
-          <span className="mt-1.5 inline-block rounded bg-fire-700/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-fire-500">
-            {user?.role}
-          </span>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="inline-block rounded bg-fire-700/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-fire-500">
+              {user?.role}
+            </span>
+            <NavLink
+              to="/profile"
+              className="text-[11px] font-medium text-zinc-500 underline-offset-2 hover:text-zinc-200 hover:underline"
+            >
+              Manage
+            </NavLink>
+          </div>
         </div>
 
         {/* Controls */}

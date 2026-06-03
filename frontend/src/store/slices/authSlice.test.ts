@@ -8,7 +8,16 @@ describe('authSlice', () => {
       reducer: { auth: authReducer },
       preloadedState: {
         auth: {
-          user: { id: '1', fullName: 'Test', email: 't@t.com', role: 'ADMIN' },
+          user: {
+            id: '1',
+            firstName: 'Test',
+            lastName: 'User',
+            fullName: 'Test User',
+            email: 't@t.com',
+            role: 'admin' as const,
+            createdAt: '2026-06-03T00:00:00.000Z',
+            updatedAt: '2026-06-03T00:00:00.000Z',
+          },
           isAuthenticated: true,
           loading: false,
           initializing: false,

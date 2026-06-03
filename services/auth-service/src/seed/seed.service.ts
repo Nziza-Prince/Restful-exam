@@ -23,6 +23,8 @@ export class SeedService implements OnModuleInit {
     const password = await bcrypt.hash('Admin@123', 12);
     await this.usersRepo.save(
       this.usersRepo.create({
+        firstName: 'System',
+        lastName: 'Administrator',
         fullName: 'System Administrator',
         email: 'admin@fems.local',
         password,

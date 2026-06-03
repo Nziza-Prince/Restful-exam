@@ -15,6 +15,7 @@ import {
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
+import { ForgotPasswordDto, ResetPasswordDto } from './dto/password-recovery.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { SetupPasswordDto } from './dto/setup-password.dto';
@@ -62,5 +63,19 @@ export class AuthController {
   @ApiOperation({ summary: 'Revoke refresh token and end session' })
   logout(@Body() dto: LogoutDto, @CurrentUser() user: JwtPayload) {
     return this.authService.logout(dto.refreshToken, user.sub);
+  }
+
+  @Post('forgot-password')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Request a password reset token' })
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.email);
+  }
+
+  @Post('reset-password')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Reset password using a recovery token' })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 }

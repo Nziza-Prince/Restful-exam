@@ -6,6 +6,12 @@ export class UserResponseDto {
   id: string;
 
   @ApiProperty()
+  firstName: string;
+
+  @ApiProperty()
+  lastName: string;
+
+  @ApiProperty()
   fullName: string;
 
   @ApiProperty()

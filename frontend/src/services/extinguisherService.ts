@@ -8,15 +8,22 @@ import type {
 export interface CreateExtinguisherPayload {
   serialNumber: string;
   type: string;
-  capacity: string;
-  purchaseDate: string;
+  location: string;
+  size: string;
+  installationDate: string;
   expiryDate: string;
+  status?: FireExtinguisher['status'];
   customerId?: string;
 }
 
 export type UpdateExtinguisherPayload = Partial<
   CreateExtinguisherPayload & { status: FireExtinguisher['status'] }
 >;
+
+export interface ScheduleInspectionPayload {
+  scheduledAt: string;
+  notes?: string;
+}
 
 export const extinguisherService = {
   listAll: (params: ExtinguisherFilters) =>
@@ -48,4 +55,7 @@ export const extinguisherService = {
     apiClient
       .patch<FireExtinguisher>(`/extinguishers/${id}/assign`, { customerId })
       .then((r) => r.data),
+
+  scheduleInspection: (id: string, payload: ScheduleInspectionPayload) =>
+    apiClient.post(`/extinguishers/${id}/inspections`, payload).then((r) => r.data),
 };

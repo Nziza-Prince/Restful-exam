@@ -7,7 +7,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const { Client } = pg;
-const connectionString = 'postgresql://postgres:ivan.2008@localhost:5432/postgres';
+const connectionString =
+  process.env.DATABASE_URL_ADMIN ??
+  'postgresql://exam:exam@localhost:5432/examdb';
 
 async function run() {
   console.log('Connecting to PostgreSQL to initialize databases...');

@@ -48,7 +48,8 @@ export type NotificationTriggerType =
   | 'EXPIRY_30'
   | 'EXPIRY_7'
   | 'EXPIRY_0'
-  | 'ASSIGNED';
+  | 'ASSIGNED'
+  | 'INSPECTION_SCHEDULED';
 
 export interface TriggerNotificationPayload {
   customerId: string;

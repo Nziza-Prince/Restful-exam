@@ -14,6 +14,12 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ name: 'first_name', length: 100, default: '' })
+  firstName: string;
+
+  @Column({ name: 'last_name', length: 100, default: '' })
+  lastName: string;
+
   @Column({ name: 'full_name', length: 200 })
   fullName: string;
 
@@ -23,7 +29,11 @@ export class User {
   @Column({ length: 255, select: false })
   password: string;
 
-  @Column({ type: 'enum', enum: UserRole, default: UserRole.CUSTOMER })
+  @Column({
+    type: 'enum',
+    enum: [UserRole.ADMIN, UserRole.USER, UserRole.INSPECTOR],
+    default: UserRole.USER,
+  })
   role: UserRole;
 
   @OneToMany(() => RefreshToken, (token) => token.user)

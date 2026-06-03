@@ -18,8 +18,17 @@ export class FireExtinguisher {
   @Column({ length: 100 })
   type: string;
 
+  @Column({ length: 200, default: 'Unassigned facility area' })
+  location: string;
+
+  @Column({ length: 50, default: '5lbs' })
+  size: string;
+
   @Column({ length: 50 })
   capacity: string;
+
+  @Column({ name: 'installation_date', type: 'date', default: () => 'CURRENT_DATE' })
+  installationDate: string;
 
   @Column({ name: 'purchase_date', type: 'date' })
   purchaseDate: string;

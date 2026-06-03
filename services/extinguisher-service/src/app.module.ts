@@ -5,7 +5,9 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { createTypeOrmConfig, JwtPayloadStrategy } from '@fems/shared';
 import { ExtinguishersModule } from './extinguishers/extinguishers.module';
+import { ExtinguisherInspection } from './extinguishers/entities/extinguisher-inspection.entity';
 import { FireExtinguisher } from './extinguishers/entities/fire-extinguisher.entity';
+import { MaintenanceLog } from './extinguishers/entities/maintenance-log.entity';
 
 @Module({
   imports: [
@@ -16,7 +18,7 @@ import { FireExtinguisher } from './extinguishers/entities/fire-extinguisher.ent
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) =>
-        createTypeOrmConfig(config, [FireExtinguisher]),
+        createTypeOrmConfig(config, [FireExtinguisher, ExtinguisherInspection, MaintenanceLog]),
     }),
     ExtinguishersModule,
   ],

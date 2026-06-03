@@ -144,6 +144,12 @@ async function main() {
 
   await request('GET', '/users/me', { label: 'GET users/me (admin)', token: adminToken, expectStatus: 200 });
   await request('GET', '/users?page=1&limit=10', { label: 'GET users list (admin)', token: adminToken, expectStatus: 200 });
+  await request('PATCH', '/users/me', {
+    label: 'PATCH users/me profile',
+    token: adminToken,
+    expectStatus: 200,
+    body: { firstName: 'System', lastName: 'Administrator' },
+  });
 
   if (adminRefresh) {
     const refreshed = await request('POST', '/auth/refresh', {
@@ -196,6 +202,51 @@ async function main() {
   });
 
   const extId = exts?.data?.data?.[0]?.id;
+  if (extId) {
+    await request('GET', `/extinguishers/${extId}`, {
+      label: 'GET extinguisher by id',
+      token: adminToken,
+      expectStatus: 200,
+    });
+    const inspection = await request('POST', `/extinguishers/${extId}/inspections`, {
+      label: 'POST schedule inspection',
+      token: adminToken,
+      expectStatus: 201,
+      body: {
+        scheduledAt: new Date(Date.now() + 86400000).toISOString(),
+        notes: 'Smoke-test inspection schedule',
+      },
+    });
+    const inspectionId = inspection?.data?.id;
+    await request('GET', `/extinguishers/${extId}/inspections?page=1&limit=10`, {
+      label: 'GET extinguisher inspections',
+      token: adminToken,
+      expectStatus: 200,
+    });
+    if (inspectionId) {
+      await request('PATCH', `/extinguishers/inspections/${inspectionId}`, {
+        label: 'PATCH inspection status',
+        token: adminToken,
+        expectStatus: 200,
+        body: { status: 'COMPLETED', notes: 'Smoke test completed' },
+      });
+    }
+    await request('POST', `/extinguishers/${extId}/maintenance`, {
+      label: 'POST maintenance log',
+      token: adminToken,
+      expectStatus: 201,
+      body: {
+        actionsTaken: 'Visual check and pressure verification',
+        actionDate: new Date().toISOString().slice(0, 10),
+        conditionsNoted: 'No visible corrosion; pressure acceptable',
+      },
+    });
+    await request('GET', `/extinguishers/${extId}/maintenance?page=1&limit=10`, {
+      label: 'GET maintenance history',
+      token: adminToken,
+      expectStatus: 200,
+    });
+  }
 
   // Notifications
   const custNotifs = await request('GET', '/notifications/me', {
@@ -280,6 +331,11 @@ async function main() {
     'customer-compliance',
     'renewal-requests',
     'notifications',
+    'daily',
+    'monthly',
+    'yearly',
+    'inspection-status',
+    'maintenance-history',
   ]) {
     await request('GET', `/reports/${report}?format=csv`, {
       label: `GET report ${report} (csv)`,
@@ -288,6 +344,11 @@ async function main() {
       raw: true,
     });
   }
+  await request('GET', '/reports/total-stock', {
+    label: 'GET report total-stock',
+    token: adminToken,
+    expectStatus: 200,
+  });
 
   // Auth logout
   if (adminRefresh) {

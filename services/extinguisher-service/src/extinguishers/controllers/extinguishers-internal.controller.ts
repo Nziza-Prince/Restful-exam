@@ -32,6 +32,16 @@ export class ExtinguishersInternalController {
     );
   }
 
+  @Get('inspection-status')
+  inspectionStatus() {
+    return this.extinguishersService.inspectionStatusReport();
+  }
+
+  @Get('maintenance-history')
+  maintenanceHistory() {
+    return this.extinguishersService.maintenanceHistoryReport();
+  }
+
   @Patch(':id/renew')
   renew(@Param('id') id: string, @Body() dto: RenewExtinguisherDto) {
     return this.extinguishersService.renew(id, dto);

@@ -1,7 +1,9 @@
-export type UserRole = 'admin' | 'customer' | 'technician';
+export type UserRole = 'admin' | 'user' | 'inspector';
 
 export interface User {
   id: string;
+  firstName: string;
+  lastName: string;
   fullName: string;
   email: string;
   role: UserRole;
@@ -21,7 +23,8 @@ export interface LoginPayload {
 }
 
 export interface RegisterPayload {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   role?: UserRole;
@@ -60,7 +63,10 @@ export interface FireExtinguisher {
   id: string;
   serialNumber: string;
   type: string;
+  location: string;
+  size: string;
   capacity: string;
+  installationDate: string;
   purchaseDate: string;
   expiryDate: string;
   status: ExtinguisherStatus;
@@ -141,7 +147,12 @@ export type ReportType =
   | 'expiring-soon'
   | 'customer-compliance'
   | 'renewal-requests'
-  | 'notifications';
+  | 'notifications'
+  | 'daily'
+  | 'monthly'
+  | 'yearly'
+  | 'inspection-status'
+  | 'maintenance-history';
 
 export interface ApiError {
   message: string;

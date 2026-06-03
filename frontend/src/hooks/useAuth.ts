@@ -6,7 +6,8 @@ export function useAuth() {
   );
 
   const isAdmin = user?.role === 'admin';
-  const isCustomer = user?.role === 'customer';
+  const isCustomer = user?.role === 'user';
+  const isInspector = user?.role === 'inspector';
 
-  return { user, isAuthenticated, loading, initializing, error, isAdmin, isCustomer };
+  return { user, isAuthenticated, loading, initializing, error, isAdmin, isCustomer, isInspector };
 }

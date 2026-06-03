@@ -12,10 +12,12 @@ jest.mock('bcrypt', () => ({
 
 const mockUser = (): User => ({
   id: 'user-1',
+  firstName: 'Alice',
+  lastName: 'Smith',
   fullName: 'Alice Smith',
   email: 'alice@example.com',
   password: 'hashed',
-  role: 'customer' as never,
+  role: 'user' as never,
   refreshTokens: [],
   createdAt: new Date(),
   updatedAt: new Date(),

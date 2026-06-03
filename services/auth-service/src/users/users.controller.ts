@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -16,6 +16,8 @@ import {
   UserRole,
 } from '@fems/shared';
 import { UsersService } from './users.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiTags('users')
 @Controller('users')
@@ -29,6 +31,18 @@ export class UsersController {
   @ApiOkResponse({ type: UserResponseDto })
   getMe(@CurrentUser() user: JwtPayload) {
     return this.usersService.getProfile(user.sub);
+  }
+
+  @Patch('me')
+  @ApiOperation({ summary: 'Update current user profile' })
+  updateMe(@CurrentUser() user: JwtPayload, @Body() dto: UpdateProfileDto) {
+    return this.usersService.updateProfile(user.sub, dto);
+  }
+
+  @Post('me/change-password')
+  @ApiOperation({ summary: 'Change current user password' })
+  changePassword(@CurrentUser() user: JwtPayload, @Body() dto: ChangePasswordDto) {
+    return this.usersService.changePassword(user.sub, dto);
   }
 
   @Get()
