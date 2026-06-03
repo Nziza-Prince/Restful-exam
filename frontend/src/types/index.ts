@@ -72,6 +72,7 @@ export interface FireExtinguisher {
   status: ExtinguisherStatus;
   customerId: string;
   customer?: Pick<Customer, 'id' | 'fullName' | 'email'> | null;
+  activeInspection?: Pick<ExtinguisherInspection, 'id' | 'status' | 'scheduledAt' | 'notes'> | null;
   createdAt: string;
   updatedAt: string;
 }

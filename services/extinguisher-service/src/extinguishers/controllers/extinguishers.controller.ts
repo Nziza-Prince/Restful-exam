@@ -67,16 +67,18 @@ export class ExtinguishersController {
       throw new NotFoundException('Customer profile not found');
     }
 
-    return this.extinguishersService.findMine(
-      customer.id,
-      query.page ?? 1,
-      query.limit ?? 10,
-      {
-        status: query.status,
-        expiryFrom: query.expiryFrom,
-        expiryTo: query.expiryTo,
-        search: query.search,
-      },
+    return this.enrichExtinguisherPage(
+      await this.extinguishersService.findMine(
+        customer.id,
+        query.page ?? 1,
+        query.limit ?? 10,
+        {
+          status: query.status,
+          expiryFrom: query.expiryFrom,
+          expiryTo: query.expiryTo,
+          search: query.search,
+        },
+      ),
     );
   }
 
@@ -352,7 +354,21 @@ export class ExtinguishersController {
     const customer = extinguisher.customerId
       ? await this.customerClient.findById(extinguisher.customerId)
       : null;
-    return { ...extinguisher, customer };
+    const activeInspection = await this.extinguishersService.findActiveInspectionForExtinguisher(
+      extinguisher.id,
+    );
+    return {
+      ...extinguisher,
+      customer,
+      activeInspection: activeInspection
+        ? {
+            id: activeInspection.id,
+            status: activeInspection.status,
+            scheduledAt: activeInspection.scheduledAt,
+            notes: activeInspection.notes,
+          }
+        : null,
+    };
   }
 
   private async enrichInspection(inspection: ExtinguisherInspection) {

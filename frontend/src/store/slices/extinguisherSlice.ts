@@ -137,6 +137,10 @@ const extinguisherSlice = createSlice({
       .addCase(updateExtinguisher.fulfilled, (state) => {
         state.saving = false;
       })
+      .addCase(updateExtinguisher.rejected, (state, action) => {
+        state.saving = false;
+        state.error = action.payload as string;
+      })
       .addCase(deleteExtinguisher.fulfilled, (state, action) => {
         state.items = state.items.filter((item) => item.id !== action.payload);
       })

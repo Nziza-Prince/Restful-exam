@@ -25,6 +25,20 @@ const statusTone = (status: ExtinguisherStatus) => {
   return 'info';
 };
 
+const inspectionTone = (status?: string): 'neutral' | 'success' | 'warning' | 'danger' | 'info' => {
+  if (status === 'IN_PROGRESS' || status === 'COMPLETED_PENDING_ADMIN_REVIEW') return 'info';
+  if (status === 'REQUIRES_MAINTENANCE') return 'danger';
+  return 'warning';
+};
+
+const inspectionLabel = (status?: string) => {
+  if (status === 'PENDING') return 'Pending';
+  if (status === 'IN_PROGRESS') return 'In progress';
+  if (status === 'COMPLETED_PENDING_ADMIN_REVIEW') return 'Awaiting admin review';
+  if (status === 'REQUIRES_MAINTENANCE') return 'Requires maintenance';
+  return 'No request';
+};
+
 const emptyForm = {
   serialNumber: '',
   type: '',
@@ -53,6 +67,7 @@ export function ExtinguishersPage() {
   const [editing, setEditing] = useState<FireExtinguisher | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [formErrors, setFormErrors] = useState<{ installationDate?: string; expiryDate?: string }>({});
+  const [formSubmitError, setFormSubmitError] = useState('');
   const [tab, setTab] = useState<'mine' | 'available'>('mine');
   const [details, setDetails] = useState<FireExtinguisher | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -106,6 +121,7 @@ export function ExtinguishersPage() {
     setEditing(null);
     setForm(emptyForm);
     setFormErrors({});
+    setFormSubmitError('');
     setModalOpen(true);
   };
 
@@ -122,18 +138,27 @@ export function ExtinguishersPage() {
       status: item.status,
     });
     setFormErrors({});
+    setFormSubmitError('');
     setModalOpen(true);
   };
 
   const handleSave = async () => {
     if (!validateDates(form)) return;
 
+    setFormSubmitError('');
+    let result;
     if (editing) {
-      await dispatch(updateExtinguisher({ id: editing.id, payload: form }));
+      result = await dispatch(updateExtinguisher({ id: editing.id, payload: form }));
     } else {
       const { customerId, ...rest } = form;
-      await dispatch(createExtinguisher({ ...rest, customerId: customerId || undefined }));
+      result = await dispatch(createExtinguisher({ ...rest, customerId: customerId || undefined }));
     }
+
+    if (createExtinguisher.rejected.match(result) || updateExtinguisher.rejected.match(result)) {
+      setFormSubmitError((result.payload as string) || 'Could not save extinguisher.');
+      return;
+    }
+
     setModalOpen(false);
     reload();
   };
@@ -176,6 +201,7 @@ export function ExtinguishersPage() {
         notes: inspectionNotes || undefined,
       });
       setInspectionMessage('Inspection scheduled successfully.');
+      reload();
     } catch (error) {
       setInspectionError((error as Error).message);
     } finally {
@@ -285,6 +311,23 @@ export function ExtinguishersPage() {
       render: (row) => <Badge tone={statusTone(row.status)}>{row.status}</Badge>,
     },
     {
+      key: 'inspection',
+      header: 'Inspection',
+      render: (row) =>
+        row.activeInspection ? (
+          <div>
+            <Badge tone={inspectionTone(row.activeInspection.status)}>
+              {inspectionLabel(row.activeInspection.status)}
+            </Badge>
+            <p className="mt-1 font-mono text-[11px] text-zinc-500">
+              {formatDate(row.activeInspection.scheduledAt)}
+            </p>
+          </div>
+        ) : (
+          <Badge tone="neutral">No request</Badge>
+        ),
+    },
+    {
       key: 'actions',
       header: 'Actions',
       render: (row) => (
@@ -329,6 +372,9 @@ export function ExtinguishersPage() {
           <Button size="sm" variant="secondary" onClick={() => openDetails(row)}>
             View
           </Button>
+          <Button size="sm" disabled={!!row.activeInspection} onClick={() => openInspection(row)}>
+            {row.activeInspection ? 'Inspection Active' : 'Request Inspection'}
+          </Button>
         </div>
       ),
     },
@@ -356,9 +402,6 @@ export function ExtinguishersPage() {
         <div className="flex flex-wrap gap-1.5">
           <Button size="sm" variant="secondary" onClick={() => openDetails(row)}>
             View
-          </Button>
-          <Button size="sm" onClick={() => openInspection(row)}>
-            Schedule
           </Button>
         </div>
       ),
@@ -469,10 +512,18 @@ export function ExtinguishersPage() {
           }
         >
           <div className="space-y-3">
+            {formSubmitError && (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                {formSubmitError}
+              </p>
+            )}
             <Input
               label="Serial number"
               value={form.serialNumber}
-              onChange={(e) => setForm({ ...form, serialNumber: e.target.value })}
+              onChange={(e) => {
+                setForm({ ...form, serialNumber: e.target.value });
+                setFormSubmitError('');
+              }}
               required
             />
             <Select
@@ -595,7 +646,7 @@ export function ExtinguishersPage() {
       <Modal
         open={!!inspectionTarget}
         onClose={() => setInspectionTarget(null)}
-        title="Schedule Inspection"
+        title="Request Inspection"
         description={
           inspectionTarget
             ? `${inspectionTarget.serialNumber} - ${inspectionTarget.location}`
@@ -607,7 +658,7 @@ export function ExtinguishersPage() {
               Close
             </Button>
             <Button loading={inspectionSaving} onClick={scheduleInspection}>
-              Schedule inspection
+              Request inspection
             </Button>
           </div>
         }

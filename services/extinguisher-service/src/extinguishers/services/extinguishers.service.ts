@@ -265,6 +265,24 @@ export class ExtinguishersService {
     return paginate(data, total, page, limit);
   }
 
+  async findActiveInspectionForExtinguisher(
+    extinguisherId: string,
+  ): Promise<ExtinguisherInspection | null> {
+    return this.inspectionsRepo
+      .createQueryBuilder('i')
+      .where('i.extinguisherId = :extinguisherId', { extinguisherId })
+      .andWhere('i.status IN (:...activeStatuses)', {
+        activeStatuses: [
+          InspectionStatus.PENDING,
+          InspectionStatus.IN_PROGRESS,
+          InspectionStatus.COMPLETED_PENDING_ADMIN_REVIEW,
+          InspectionStatus.REQUIRES_MAINTENANCE,
+        ],
+      })
+      .orderBy('i.scheduledAt', 'DESC')
+      .getOne();
+  }
+
   async updateInspection(id: string, dto: UpdateInspectionDto): Promise<ExtinguisherInspection> {
     const inspection = await this.inspectionsRepo.findOne({ where: { id } });
     if (!inspection) throw new NotFoundException('Inspection not found');
