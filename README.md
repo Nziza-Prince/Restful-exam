@@ -169,6 +169,7 @@ Open http://localhost:5173
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | admin@fems.local | Admin@123 |
+| Inspector | inspector@fems.local | Inspector@123 |
 | Customer | alice@example.com | Customer@123 |
 
 ## Docker
@@ -206,7 +207,24 @@ Full documentation: http://localhost:3000/api/docs
 
 **Admin** — Full access: customers, extinguishers, notifications, renewals, compliance, reports, settings.
 
-**Customer** — View own extinguishers, notifications, submit renewal requests.
+**Inspector** — View inspection requests, start inspections, submit reports, and log maintenance.
+
+**Customer** — View own extinguishers, request inspections, and receive notifications.
+
+## Demo Checklist
+
+Use this flow during review:
+
+1. Log in as the customer and request an inspection with a date and time.
+2. Log in as the inspector and open **Inspection Requests**.
+3. Confirm the request shows serial number, type, location, expiry date, status, and owner.
+4. Start the inspection, then submit the inspection report.
+5. Add a maintenance log with actions taken, date of action, and conditions noted.
+6. Log in as admin and open **Inspection Reviews**.
+7. Approve, reject, or mark the report as requiring maintenance.
+8. Open **Maintenance History** to verify the maintenance log is visible.
+9. Open **Reports** and export the compliance report as CSV or PDF.
+10. Run `npm run test:e2e` to verify the full workflow through the API.
 
 ## Business Rules
 

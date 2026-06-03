@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { useAppDispatch } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
+import { ToastHost } from '@/components/ui/ToastHost';
 import { cn } from '@/utils';
 
 // ── SVG icon components ───────────────────────────────────────────────────────
@@ -125,6 +126,8 @@ const adminLinks = [
   { to: '/dashboard', label: 'Dashboard', Icon: IconGrid },
   { to: '/customers', label: 'Users', Icon: IconPeople },
   { to: '/extinguishers', label: 'Extinguishers', Icon: IconCylinder },
+  { to: '/inspection-reviews', label: 'Inspection Reviews', Icon: IconDocument },
+  { to: '/maintenance-history', label: 'Maintenance', Icon: IconRefresh },
   { to: '/notifications', label: 'Notifications', Icon: IconBell },
   { to: '/renewals', label: 'Renewals', Icon: IconRefresh },
   { to: '/compliance', label: 'Compliance', Icon: IconShield },
@@ -142,6 +145,7 @@ const customerLinks = [
 
 const inspectorLinks = [
   { to: '/dashboard', label: 'Dashboard', Icon: IconGrid },
+  { to: '/inspection-requests', label: 'Inspection Requests', Icon: IconDocument },
   { to: '/extinguishers', label: 'Extinguishers', Icon: IconCylinder },
   { to: '/profile', label: 'Profile', Icon: IconUser },
 ];
@@ -254,6 +258,7 @@ export function Sidebar() {
 export function AppLayout() {
   return (
     <div className="flex min-h-[100dvh] bg-zinc-100 dark:bg-zinc-950">
+      <ToastHost />
       {/* Sidebar — always dark, always fixed on md+ */}
       <div className="hidden md:block">
         <div className="fixed inset-y-0 left-0 z-30 w-60">

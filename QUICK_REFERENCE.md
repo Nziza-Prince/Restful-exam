@@ -13,6 +13,7 @@ Health Check:  http://localhost:3000/api/health
 
 ```
 Admin:     admin@fems.local / Admin@123
+Inspector: inspector@fems.local / Inspector@123
 Customer:  alice@example.com / Customer@123
 ```
 
@@ -42,6 +43,9 @@ pkill -f "vite"
 ```bash
 # Test all APIs
 npm run test:apis
+
+# Test full customer → inspector → admin review workflow
+npm run test:e2e
 
 # Check API Gateway health
 curl http://localhost:3000/api/health

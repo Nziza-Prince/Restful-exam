@@ -81,14 +81,16 @@ async function seedAuth() {
 
   const adminHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
   const customerHash = await bcrypt.hash(CUSTOMER_PASSWORD, 12);
+  const inspectorHash = await bcrypt.hash('Inspector@123', 12);
 
   const adminId = await upsertUser(client, randomUUID(), 'System Administrator', 'admin@fems.local', adminHash, 'admin');
+  const inspectorId = await upsertUser(client, randomUUID(), 'Ivan Inspector', 'inspector@fems.local', inspectorHash, 'inspector');
   const customerUser1Id = await upsertUser(client, randomUUID(), 'Alice Johnson', 'alice@example.com', customerHash, 'user');
   const customerUser2Id = await upsertUser(client, randomUUID(), 'Bob Smith', 'bob@example.com', customerHash, 'user');
 
   await client.end();
-  console.log('✓ fems_auth seeded (admin@fems.local / Admin@123)');
-  return { adminId, customerUser1Id, customerUser2Id };
+  console.log('✓ fems_auth seeded (admin@fems.local, inspector@fems.local, alice@example.com)');
+  return { adminId, inspectorId, customerUser1Id, customerUser2Id };
 }
 
 async function seedCustomers(adminId) {
@@ -250,6 +252,7 @@ async function main() {
   await seedCompliance(customerIds);
   console.log('\nSeed complete!');
   console.log('Admin login:    admin@fems.local / Admin@123');
+  console.log('Inspector login: inspector@fems.local / Inspector@123');
   console.log('Customer login: alice@example.com / Customer@123');
 }
 

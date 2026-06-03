@@ -14,7 +14,7 @@ import {
 import { StatCard } from '@/components/ui/Card';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge, DataTable, PageHeader, type Column } from '@/components/ui/DataTable';
+import { Badge, PageHeader, type Column } from '@/components/ui/DataTable';
 import { Input, Select, TextArea } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/hooks/useAuth';
@@ -67,6 +67,8 @@ export function DashboardPage() {
   const [maintenanceError, setMaintenanceError] = useState('');
   const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
   const [maintenanceLogsLoading, setMaintenanceLogsLoading] = useState(false);
+  void inspectionLoading;
+  void inspectionError;
 
   useEffect(() => {
     const load = async () => {
@@ -314,6 +316,7 @@ export function DashboardPage() {
       ),
     },
   ];
+  void inspectionColumns;
 
   return (
     <div className="page-container">
@@ -376,33 +379,6 @@ export function DashboardPage() {
           </>
         )}
       </div>
-
-      {isInspector && (
-        <Card title="Inspection Requests" description="Pending and assigned inspection requests">
-          {inspectionError && (
-            <p className="mb-3 text-sm text-red-600 dark:text-red-400">{inspectionError}</p>
-          )}
-          <DataTable
-            columns={inspectionColumns}
-            data={inspectionRequests}
-            loading={inspectionLoading}
-            rowKey={(row) => row.id}
-            emptyMessage="No inspection requests found"
-          />
-        </Card>
-      )}
-
-      {isAdmin && (
-        <Card title="Inspection Reports" description="Submitted reports pending admin review">
-          <DataTable
-            columns={inspectionColumns}
-            data={inspectionRequests}
-            loading={inspectionLoading}
-            rowKey={(row) => row.id}
-            emptyMessage="No inspection reports awaiting review"
-          />
-        </Card>
-      )}
 
       {/* Admin charts */}
       {isAdmin && (

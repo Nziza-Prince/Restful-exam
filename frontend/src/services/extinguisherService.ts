@@ -118,4 +118,9 @@ export const extinguisherService = {
     apiClient
       .get<PaginatedResult<MaintenanceLog>>(`/extinguishers/${id}/maintenance`, { params })
       .then((r) => r.data),
+
+  listAllMaintenance: (params: { page?: number; limit?: number } = {}) =>
+    apiClient
+      .get<PaginatedResult<MaintenanceLog>>('/extinguishers/maintenance', { params })
+      .then((r) => r.data),
 };

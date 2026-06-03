@@ -10,6 +10,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   assignExtinguisher,
   buyExtinguisher,
+  clearExtinguisherError,
   createExtinguisher,
   deleteExtinguisher,
   fetchExtinguishers,
@@ -17,6 +18,7 @@ import {
 } from '@/store/slices/extinguisherSlice';
 import { fetchCustomers } from '@/store/slices/customerSlice';
 import { formatDate } from '@/utils';
+import { showToast } from '@/utils/toast';
 
 const statusTone = (status: ExtinguisherStatus) => {
   if (status === 'EXPIRED') return 'danger';
@@ -118,6 +120,7 @@ export function ExtinguishersPage() {
   };
 
   const openCreate = () => {
+    dispatch(clearExtinguisherError());
     setEditing(null);
     setForm(emptyForm);
     setFormErrors({});
@@ -126,6 +129,7 @@ export function ExtinguishersPage() {
   };
 
   const openEdit = (item: FireExtinguisher) => {
+    dispatch(clearExtinguisherError());
     setEditing(item);
     setForm({
       serialNumber: item.serialNumber,
@@ -159,6 +163,8 @@ export function ExtinguishersPage() {
       return;
     }
 
+    dispatch(clearExtinguisherError());
+    showToast(editing ? 'Extinguisher updated.' : 'Extinguisher registered.');
     setModalOpen(false);
     reload();
   };
@@ -201,6 +207,7 @@ export function ExtinguishersPage() {
         notes: inspectionNotes || undefined,
       });
       setInspectionMessage('Inspection scheduled successfully.');
+      showToast('Inspection request submitted.');
       reload();
     } catch (error) {
       setInspectionError((error as Error).message);
@@ -220,6 +227,7 @@ export function ExtinguishersPage() {
     if (assignExtinguisher.fulfilled.match(result)) {
       setAssignTarget(null);
       setAssignCustomerId('');
+      showToast('Extinguisher assignment updated.');
       reload();
     } else {
       setAssignError((result.payload as string) || 'Assignment failed.');
@@ -498,11 +506,22 @@ export function ExtinguishersPage() {
       {isAdmin && (
         <Modal
           open={modalOpen}
-          onClose={() => setModalOpen(false)}
+          onClose={() => {
+            dispatch(clearExtinguisherError());
+            setFormSubmitError('');
+            setModalOpen(false);
+          }}
           title={editing ? 'Edit Extinguisher' : 'Register Extinguisher'}
           footer={
             <div className="flex justify-end gap-2 border-t border-zinc-100 px-5 py-3 dark:border-zinc-800">
-              <Button variant="secondary" onClick={() => setModalOpen(false)}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  dispatch(clearExtinguisherError());
+                  setFormSubmitError('');
+                  setModalOpen(false);
+                }}
+              >
                 Cancel
               </Button>
               <Button loading={saving} onClick={handleSave}>

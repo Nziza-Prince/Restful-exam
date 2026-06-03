@@ -22,6 +22,7 @@
     "db:init": "node scripts/setup-db.mjs",
     "seed": "node scripts/seed.mjs",
     "test:apis": "node scripts/test-apis.mjs",
+    "test:e2e": "node scripts/e2e-review-flow.mjs",
     "test:auth": "npm test --workspace=@fems/auth-service"
   },
   "devDependencies": {

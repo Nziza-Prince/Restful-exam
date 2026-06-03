@@ -227,6 +227,13 @@ export class ExtinguishersController {
     return this.enrichInspection(await this.extinguishersService.reviewInspection(inspectionId, dto));
   }
 
+  @Get('maintenance')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'List all maintenance history (admin)' })
+  listAllMaintenance(@Query() query: PaginationQueryDto) {
+    return this.extinguishersService.listMaintenance(query.page ?? 1, query.limit ?? 10);
+  }
+
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.USER, UserRole.INSPECTOR)
   @ApiOperation({ summary: 'Get extinguisher by ID' })

@@ -25,6 +25,7 @@ export function mergeOpenApiDocuments(
       securitySchemes: {
         JWT: {
           type: 'http',
+          type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
           description: 'JWT from POST /api/auth/login',

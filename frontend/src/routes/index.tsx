@@ -15,6 +15,9 @@ import { CompliancePage } from '@/pages/CompliancePage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { InspectionRequestsPage } from '@/pages/InspectionRequestsPage';
+import { InspectionReviewsPage } from '@/pages/InspectionReviewsPage';
+import { MaintenanceHistoryPage } from '@/pages/MaintenanceHistoryPage';
 
 export const router = createBrowserRouter([
   {
@@ -37,9 +40,17 @@ export const router = createBrowserRouter([
           { path: 'notifications', element: <NotificationsPage /> },
           { path: 'profile', element: <ProfilePage /> },
           {
+            element: <RoleRoute roles={['inspector']} />,
+            children: [
+              { path: 'inspection-requests', element: <InspectionRequestsPage /> },
+            ],
+          },
+          {
             element: <RoleRoute roles={['admin']} />,
             children: [
               { path: 'customers', element: <CustomersPage /> },
+              { path: 'inspection-reviews', element: <InspectionReviewsPage /> },
+              { path: 'maintenance-history', element: <MaintenanceHistoryPage /> },
               { path: 'compliance', element: <CompliancePage /> },
               { path: 'reports', element: <ReportsPage /> },
               { path: 'renewals', element: <RenewalsPage /> },
