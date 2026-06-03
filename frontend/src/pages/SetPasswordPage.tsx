@@ -88,7 +88,7 @@ export function SetPasswordPage() {
           Set Your Password
         </h2>
         <p className="mt-1 text-sm text-zinc-500">
-          Create a secure password to activate your FEMS account.
+          Create a secure password to activate your TZW LTD account.
         </p>
       </div>
 

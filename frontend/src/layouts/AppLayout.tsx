@@ -126,13 +126,10 @@ const adminLinks = [
   { to: '/dashboard', label: 'Dashboard', Icon: IconGrid },
   { to: '/customers', label: 'Users', Icon: IconPeople },
   { to: '/extinguishers', label: 'Extinguishers', Icon: IconCylinder },
-  { to: '/inspection-reviews', label: 'Inspection Reviews', Icon: IconDocument },
+  { to: '/inspection-reviews', label: 'Inspections', Icon: IconShield },
   { to: '/maintenance-history', label: 'Maintenance', Icon: IconRefresh },
   { to: '/notifications', label: 'Notifications', Icon: IconBell },
-  { to: '/renewals', label: 'Renewals', Icon: IconRefresh },
-  { to: '/compliance', label: 'Compliance', Icon: IconShield },
   { to: '/reports', label: 'Reports', Icon: IconDocument },
-  { to: '/settings', label: 'Settings', Icon: IconSettings },
   { to: '/profile', label: 'Profile', Icon: IconUser },
 ];
 
@@ -169,7 +166,7 @@ export function Sidebar() {
           </svg>
         </div>
         <div>
-          <p className="text-sm font-semibold tracking-tight text-zinc-100">FEMS</p>
+          <p className="text-sm font-semibold tracking-tight text-zinc-100">TZW LTD</p>
           <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">
             Safety Portal
           </p>
@@ -276,7 +273,7 @@ export function AppLayout() {
             </svg>
           </div>
           <p className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            FEMS
+            TZW LTD
           </p>
         </div>
 

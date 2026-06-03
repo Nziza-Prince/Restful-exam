@@ -22,7 +22,7 @@ export function AuthLayout() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-semibold">TWZ FEMS</p>
+              <p className="text-sm font-semibold">TZW LTD</p>
               <p className="text-xs text-white/55">Inspection command desk</p>
             </div>
           </div>
@@ -67,7 +67,7 @@ export function AuthLayout() {
                 <path d="M12 2C9.5 7 7 9 7 13a5 5 0 0010 0c0-4-2.5-6-5-11z" />
               </svg>
             </div>
-            <span className="text-sm font-semibold">TWZ FEMS</span>
+            <span className="text-sm font-semibold">TZW LTD</span>
           </div>
           <span className="text-xs font-medium text-zinc-500">Secure portal</span>
         </div>
@@ -80,7 +80,7 @@ export function AuthLayout() {
             </svg>
             </div>
             <div>
-              <p className="text-sm font-semibold">TWZ FEMS</p>
+              <p className="text-sm font-semibold">TZW LTD</p>
               <p className="text-xs text-zinc-500">Fire safety management</p>
             </div>
           </div>

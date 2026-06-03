@@ -30,7 +30,7 @@ export function CustomersPage() {
     <div className="page-container">
       <PageHeader
         title="Users"
-        description="People who created their own FEMS accounts"
+        description="System users and their account details"
       />
 
       <div className="mb-4 max-w-md">

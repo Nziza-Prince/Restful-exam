@@ -4,6 +4,24 @@ import { extinguisherService } from '@/services/extinguisherService';
 import type { FireExtinguisher, MaintenanceLog } from '@/types';
 import { formatDate } from '@/utils';
 
+/**
+ * MAINTENANCE HISTORY PAGE
+ * 
+ * Purpose: Track all physical work done on extinguishers
+ * 
+ * Maintenance = Physical repair/service work
+ * - Technicians refill, repair, or replace parts
+ * - Physical work is done on the extinguisher
+ * - Costs are recorded (parts, labor)
+ * - Types: ROUTINE (regular service), REFILL (recharge), REPAIR (fix parts)
+ * 
+ * This page shows:
+ * - What work was done (refilled, replaced hose, etc.)
+ * - When it was done
+ * - Conditions found during work
+ * - Who performed the maintenance
+ */
+
 export function MaintenanceHistoryPage() {
   const [rows, setRows] = useState<MaintenanceLog[]>([]);
   const [extinguishers, setExtinguishers] = useState<FireExtinguisher[]>([]);

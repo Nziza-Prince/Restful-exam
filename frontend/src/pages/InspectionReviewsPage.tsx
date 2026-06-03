@@ -8,6 +8,23 @@ import type { ExtinguisherInspection, InspectionStatus } from '@/types';
 import { formatDateTime } from '@/utils';
 import { showToast } from '@/utils/toast';
 
+/**
+ * INSPECTION REVIEWS PAGE
+ * 
+ * Purpose: Review inspection reports submitted by inspectors
+ * 
+ * Inspection = Safety check (visual inspection, pressure check, etc.)
+ * - Inspectors look at extinguishers to verify they're safe
+ * - Result: APPROVED (safe to use) or REJECTED (needs maintenance)
+ * - No physical work done - just checking and reporting
+ * 
+ * This page allows admins to:
+ * - Review submitted inspection reports
+ * - Approve inspections if extinguisher is safe
+ * - Reject inspections if issues found
+ * - Flag for maintenance if repairs needed
+ */
+
 type ReviewStatus = 'APPROVED' | 'REJECTED' | 'REQUIRES_MAINTENANCE';
 
 const statusOptions: { value: '' | InspectionStatus; label: string }[] = [

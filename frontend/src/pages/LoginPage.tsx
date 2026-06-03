@@ -27,7 +27,7 @@ export function LoginPage() {
           Operator access
         </p>
         <h2 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-100">
-          Sign in to FEMS
+          Sign in to TZW LTD
         </h2>
         <p className="mt-2 text-sm leading-6 text-zinc-500">
           Continue to extinguisher status, inspections, maintenance logs, and reports.
@@ -47,7 +47,7 @@ export function LoginPage() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="admin@fems.local"
+          placeholder="admin@tzwltd.com"
           autoComplete="email"
           required
         />

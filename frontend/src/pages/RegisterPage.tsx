@@ -31,7 +31,7 @@ export function RegisterPage() {
           Join the safety desk
         </p>
         <h2 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-100">
-          Create your FEMS account
+          Create your TZW LTD account
         </h2>
         <p className="mt-2 text-sm leading-6 text-zinc-500">
           Register as a facility user to view extinguisher status and schedule inspections.

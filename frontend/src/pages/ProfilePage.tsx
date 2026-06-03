@@ -81,7 +81,7 @@ export function ProfilePage() {
       />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Card title="Account Details" description="Update the identity used across FEMS">
+        <Card title="Account Details" description="Update your account information">
           <form onSubmit={saveProfile} className="space-y-4">
             {profileError && (
               <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">

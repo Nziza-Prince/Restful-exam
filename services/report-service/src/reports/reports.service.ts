@@ -120,12 +120,12 @@ export class ReportsService {
       })),
       ...maintenanceHistory.map((row) => ({
         section: 'Maintenance history',
-        metric: row.actionDate ?? 'Maintenance action',
-        value: row.actionsTaken ?? '—',
+        metric: row.actionDate ?? 'Unknown date',
+        value: row.actionsTaken ?? 'No actions recorded',
         details: [
-          row.conditionsNoted,
-          row.extinguisherId ? `Extinguisher: ${row.extinguisherId}` : undefined,
-          row.loggedBy ? `Logged by: ${row.loggedBy}` : undefined,
+          `Extinguisher: ${row.extinguisherId ?? 'Unknown'}`,
+          `Conditions: ${row.conditionsNoted ?? 'Not specified'}`,
+          `Performed by: ${row.loggedBy ?? 'Unknown'}`,
         ].filter(Boolean).join(' | '),
       })),
     ];
@@ -158,7 +158,18 @@ export class ReportsService {
   }
 
   async maintenanceHistory(query: ReportQueryDto & { adminId?: string }): Promise<ExportResult | Record<string, unknown>[]> {
-    const rows = await this.extinguisherClient.getMaintenanceHistory({ adminId: query.adminId });
+    const rawRows = await this.extinguisherClient.getMaintenanceHistory({ adminId: query.adminId });
+    
+    // Transform to more readable format
+    const rows = rawRows.map(row => ({
+      maintenanceDate: row.actionDate,
+      extinguisherId: row.extinguisherId,
+      actionsTaken: row.actionsTaken,
+      conditionsNoted: row.conditionsNoted,
+      performedBy: row.loggedBy,
+      recordedAt: row.createdAt,
+    }));
+    
     return this.respond('maintenance-history', rows, query.format ?? ReportFormat.CSV);
   }
 
