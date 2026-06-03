@@ -1,0 +1,144 @@
+// FEMS Database Schema - dbdiagram.io format
+
+Table users {
+  id uuid [pk]
+  first_name varchar(100)
+  last_name varchar(100)
+  full_name varchar(200)
+  email varchar(255) [unique]
+  password varchar(255)
+  role enum [note: 'ADMIN, USER, INSPECTOR']
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table customers {
+  id uuid [pk]
+  full_name varchar(255)
+  national_id varchar(50)
+  phone varchar(20)
+  email varchar(255) [unique]
+  address text
+  created_by uuid
+  invitation_token_hash varchar(64)
+  invitation_expires_at timestamptz
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table fire_extinguishers {
+  id uuid [pk]
+  serial_number varchar(100) [unique]
+  type varchar(100)
+  location varchar(200)
+  size varchar(50)
+  capacity varchar(50)
+  installation_date date
+  purchase_date date
+  expiry_date date
+  status enum [note: 'ACTIVE, EXPIRING_SOON, EXPIRED, RENEWED']
+  customer_id uuid
+  created_by uuid
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table maintenance_logs {
+  id uuid [pk]
+  extinguisher_id uuid
+  actions_taken text
+  action_date date
+  conditions_noted text
+  logged_by uuid
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table extinguisher_inspections {
+  id uuid [pk]
+  extinguisher_id uuid
+  scheduled_at timestamptz
+  requested_by uuid
+  inspector_id uuid
+  status varchar(50) [note: 'PENDING, IN_PROGRESS, COMPLETED_PENDING_ADMIN_REVIEW, APPROVED, REJECTED, REQUIRES_MAINTENANCE']
+  notes text
+  report_condition text
+  report_notes text
+  actions_taken text
+  inspection_result varchar(100)
+  inspection_date date
+  admin_review_notes text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table compliance_cases {
+  id uuid [pk]
+  customer_id uuid
+  extinguisher_id uuid
+  case_status enum [note: 'OPEN, ESCALATED, RESOLVED']
+  closed_at timestamptz
+  notes text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table renewal_requests {
+  id uuid [pk]
+  customer_id uuid
+  extinguisher_id uuid
+  request_type enum [note: 'RENEWAL, REPLACEMENT']
+  status enum [note: 'PENDING, APPROVED, REJECTED']
+  description text
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table notifications {
+  id uuid [pk]
+  customer_id uuid
+  extinguisher_id uuid
+  message text
+  type enum [note: 'EXPIRING_SOON, EXPIRED, INSPECTION_DUE']
+  channel enum [note: 'EMAIL, SMS, IN_APP']
+  status enum [note: 'SENT, DELIVERED, FAILED']
+  sent_at timestamptz
+  read_at timestamptz
+  created_at timestamp
+}
+
+Table refresh_tokens {
+  id uuid [pk]
+  user_id uuid
+  token varchar(500) [unique]
+  expires_at timestamptz
+  created_at timestamp
+}
+
+Table audit_logs {
+  id uuid [pk]
+  user_id uuid
+  action varchar(100)
+  entity_type varchar(100)
+  entity_id uuid
+  details text
+  created_at timestamp
+}
+
+// Relationships
+Ref: fire_extinguishers.customer_id > customers.id
+Ref: fire_extinguishers.created_by > users.id
+Ref: maintenance_logs.extinguisher_id > fire_extinguishers.id
+Ref: maintenance_logs.logged_by > users.id
+Ref: extinguisher_inspections.extinguisher_id > fire_extinguishers.id
+Ref: extinguisher_inspections.requested_by > customers.id
+Ref: extinguisher_inspections.inspector_id > users.id
+Ref: compliance_cases.customer_id > customers.id
+Ref: compliance_cases.extinguisher_id > fire_extinguishers.id
+Ref: renewal_requests.customer_id > customers.id
+Ref: renewal_requests.extinguisher_id > fire_extinguishers.id
+Ref: notifications.customer_id > customers.id
+Ref: notifications.extinguisher_id > fire_extinguishers.id
+Ref: refresh_tokens.user_id > users.id
+Ref: customers.created_by > users.id
+

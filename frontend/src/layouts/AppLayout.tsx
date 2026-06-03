@@ -127,7 +127,6 @@ const adminLinks = [
   { to: '/customers', label: 'Users', Icon: IconPeople },
   { to: '/extinguishers', label: 'Extinguishers', Icon: IconCylinder },
   { to: '/inspection-reviews', label: 'Inspections', Icon: IconShield },
-  { to: '/maintenance-history', label: 'Maintenance', Icon: IconRefresh },
   { to: '/notifications', label: 'Notifications', Icon: IconBell },
   { to: '/reports', label: 'Reports', Icon: IconDocument },
   { to: '/profile', label: 'Profile', Icon: IconUser },
