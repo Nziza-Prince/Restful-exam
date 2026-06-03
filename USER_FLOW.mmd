@@ -1,0 +1,85 @@
+graph TD
+    Start([User Visits App])
+    
+    Start --> Login{Authenticated?}
+    Login -->|No| LoginPage[Login/Register Page]
+    LoginPage --> Auth[Enter Credentials]
+    Auth --> AuthAPI[POST /auth/login]
+    AuthAPI --> SaveToken[Save JWT Tokens]
+    SaveToken --> CheckRole
+    
+    Login -->|Yes| CheckRole{Check Role}
+    
+    CheckRole -->|Admin| AdminFlow
+    CheckRole -->|Inspector| InspectorFlow
+    CheckRole -->|Customer| CustomerFlow
+    
+    subgraph AdminFlow[Admin Workflow]
+        AdminDash[Dashboard<br/>View Stats & Charts]
+        ManageUsers[Manage Users<br/>Create/Edit/Delete]
+        ManageExt[Manage Extinguishers<br/>Register/Assign]
+        ReviewInsp[Review Inspections<br/>Approve/Reject]
+        ViewReports[Generate Reports<br/>PDF/CSV/XLSX]
+        
+        AdminDash --> ManageUsers
+        AdminDash --> ManageExt
+        AdminDash --> ReviewInsp
+        AdminDash --> ViewReports
+        
+        ManageExt --> AssignExt[Assign to Customer]
+        ReviewInsp --> ApproveReject{Decision}
+        ApproveReject -->|Approve| MarkApproved[Mark Approved]
+        ApproveReject -->|Reject| MarkRejected[Mark Rejected]
+        ApproveReject -->|Maintenance| RequireMaint[Require Maintenance]
+    end
+    
+    subgraph InspectorFlow[Inspector Workflow]
+        InspDash[Dashboard<br/>View Requests]
+        ViewRequests[Inspection Requests<br/>Pending/In Progress]
+        StartInsp[Start Inspection]
+        PerformInsp[Perform Physical Inspection]
+        SubmitReport[Submit Report<br/>Condition/Actions/Result]
+        LogMaint[Log Maintenance<br/>If Needed]
+        
+        InspDash --> ViewRequests
+        ViewRequests --> StartInsp
+        StartInsp --> PerformInsp
+        PerformInsp --> SubmitReport
+        PerformInsp --> LogMaint
+        SubmitReport --> WaitReview[Wait Admin Review]
+    end
+    
+    subgraph CustomerFlow[Customer Workflow]
+        CustDash[Dashboard<br/>My Extinguishers]
+        ViewMine[View My Units]
+        BrowseAvail[Browse Available<br/>Extinguishers]
+        BuyExt[Purchase Extinguisher]
+        RequestInsp[Request Inspection]
+        ViewNotif[View Notifications<br/>Expiry Alerts]
+        
+        CustDash --> ViewMine
+        CustDash --> BrowseAvail
+        ViewMine --> RequestInsp
+        BrowseAvail --> BuyExt
+        BuyExt --> ViewMine
+        ViewNotif --> ViewMine
+    end
+    
+    subgraph BackgroundJobs[Automated Background Tasks]
+        CronCheck[Cron Job Runs]
+        CheckExpiry[Check Expiry Dates]
+        UpdateStatus[Update Status<br/>EXPIRING_SOON/EXPIRED]
+        SendNotif[Send Notifications<br/>Email/SMS]
+        CreateCompliance[Create Compliance Cases]
+        
+        CronCheck --> CheckExpiry
+        CheckExpiry --> UpdateStatus
+        UpdateStatus --> SendNotif
+        UpdateStatus --> CreateCompliance
+    end
+    
+    style Start fill:#3b82f6
+    style AdminFlow fill:#f59e0b
+    style InspectorFlow fill:#10b981
+    style CustomerFlow fill:#8b5cf6
+    style BackgroundJobs fill:#ef4444

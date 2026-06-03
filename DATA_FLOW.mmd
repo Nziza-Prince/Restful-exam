@@ -1,0 +1,108 @@
+sequenceDiagram
+    participant C as Customer
+    participant F as Frontend
+    participant G as API Gateway
+    participant A as Auth Service
+    participant E as Extinguisher Service
+    participant N as Notification Service
+    participant DB as PostgreSQL
+
+    Note over C,DB: 1. Authentication Flow
+    C->>F: Enter credentials
+    F->>G: POST /auth/login
+    G->>A: Forward login request
+    A->>DB: Verify credentials
+    DB-->>A: User found
+    A-->>G: JWT tokens + user info
+    G-->>F: Auth response
+    F->>F: Store tokens in localStorage
+
+    Note over C,DB: 2. Customer Requests Inspection
+    C->>F: Click "Request Inspection"
+    F->>G: POST /extinguishers/:id/inspections<br/>(JWT in header)
+    G->>G: Verify JWT token
+    G->>E: Forward request
+    E->>DB: INSERT inspection_request
+    E->>N: Trigger notification
+    N->>DB: INSERT notification
+    N-->>E: Notification sent
+    E-->>G: Inspection created
+    G-->>F: Success response
+    F-->>C: Show success message
+
+    Note over C,DB: 3. Inspector Performs Inspection
+    participant I as Inspector
+    I->>F: View inspection requests
+    F->>G: GET /extinguishers/inspections
+    G->>E: Fetch inspections
+    E->>DB: SELECT inspections<br/>WHERE status = PENDING
+    DB-->>E: Return inspections
+    E-->>G: Inspection list
+    G-->>F: Response
+    F-->>I: Display requests
+
+    I->>F: Start inspection
+    F->>G: PATCH /inspections/:id/start
+    G->>E: Update status
+    E->>DB: UPDATE status = IN_PROGRESS
+    E-->>G: Updated
+    G-->>F: Success
+    F-->>I: Show form
+
+    I->>F: Submit report (condition, actions, result)
+    F->>G: POST /inspections/:id/report
+    G->>E: Save report
+    E->>DB: UPDATE inspection<br/>status = COMPLETED_PENDING_ADMIN_REVIEW
+    E->>N: Notify admin
+    E-->>G: Report submitted
+    G-->>F: Success
+    F-->>I: Confirmation
+
+    Note over C,DB: 4. Admin Reviews Inspection
+    participant AD as Admin
+    AD->>F: View pending reviews
+    F->>G: GET /extinguishers/inspections?status=...
+    G->>E: Fetch pending
+    E->>DB: SELECT inspections
+    DB-->>E: Return data
+    E-->>G: Inspection list
+    G-->>F: Response
+    F-->>AD: Display reviews
+
+    AD->>F: Approve/Reject
+    F->>G: PATCH /inspections/:id/review
+    G->>E: Update review status
+    E->>DB: UPDATE status = APPROVED
+    E->>N: Notify customer
+    E-->>G: Updated
+    G-->>F: Success
+    F-->>AD: Confirmation
+
+    Note over C,DB: 5. Admin Generates Report
+    participant R as Report Service
+    AD->>F: Click "Download Report"
+    F->>G: GET /reports/compliance-summary?format=pdf
+    G->>R: Forward request
+    R->>E: GET extinguishers data
+    E->>DB: SELECT extinguishers
+    DB-->>E: Data
+    E-->>R: Extinguisher data
+    R->>E: GET inspections data
+    E-->>R: Inspection data
+    R->>E: GET maintenance data
+    E-->>R: Maintenance data
+    R->>R: Generate PDF
+    R-->>G: PDF buffer
+    G-->>F: File download
+    F-->>AD: Download starts
+
+    Note over C,DB: 6. Background Cron Job
+    participant CR as Cron Scheduler
+    CR->>E: Check expiry dates
+    E->>DB: SELECT extinguishers<br/>WHERE expiry_date <= NOW() + 90 days
+    DB-->>E: Expiring units
+    E->>DB: UPDATE status = EXPIRING_SOON/EXPIRED
+    E->>N: Send expiry notifications
+    N->>DB: INSERT notifications
+    N->>N: Send emails/SMS
+    N-->>E: Complete

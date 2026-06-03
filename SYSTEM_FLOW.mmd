@@ -1,0 +1,88 @@
+graph TB
+    subgraph "Frontend - React/Vite"
+        UI[User Interface]
+        Auth[Auth Pages]
+        Admin[Admin Dashboard]
+        Inspector[Inspector Dashboard]
+        Customer[Customer Dashboard]
+    end
+
+    subgraph "API Gateway :3000"
+        Gateway[NestJS Gateway<br/>JWT Auth<br/>Route Aggregation]
+    end
+
+    subgraph "Microservices"
+        AuthSvc[Auth Service :3001<br/>Login/Register<br/>JWT Tokens]
+        CustomerSvc[Customer Service :3002<br/>User Management<br/>Invitations]
+        ExtSvc[Extinguisher Service :3003<br/>Inventory<br/>Inspections<br/>Maintenance]
+        NotifSvc[Notification Service :3004<br/>Alerts<br/>Email/SMS]
+        RenewalSvc[Renewal Service :3005<br/>Renewal Requests]
+        ComplianceSvc[Compliance Service :3006<br/>Compliance Cases]
+        ReportSvc[Report Service :3007<br/>PDF/CSV/XLSX Export]
+    end
+
+    subgraph "Databases"
+        AuthDB[(fems_auth)]
+        CustomerDB[(fems_customers)]
+        ExtDB[(fems_extinguishers)]
+        NotifDB[(fems_notifications)]
+        RenewalDB[(fems_renewals)]
+        ComplianceDB[(fems_compliance)]
+    end
+
+    %% Frontend to Gateway
+    UI --> Gateway
+    Auth --> Gateway
+    Admin --> Gateway
+    Inspector --> Gateway
+    Customer --> Gateway
+
+    %% Gateway to Services
+    Gateway --> AuthSvc
+    Gateway --> CustomerSvc
+    Gateway --> ExtSvc
+    Gateway --> NotifSvc
+    Gateway --> RenewalSvc
+    Gateway --> ComplianceSvc
+    Gateway --> ReportSvc
+
+    %% Services to Databases
+    AuthSvc --> AuthDB
+    CustomerSvc --> CustomerDB
+    ExtSvc --> ExtDB
+    NotifSvc --> NotifDB
+    RenewalSvc --> RenewalDB
+    ComplianceSvc --> ComplianceDB
+
+    %% Service Inter-communication
+    ReportSvc -.->|Fetch Data| ExtSvc
+    ReportSvc -.->|Fetch Data| CustomerSvc
+    ReportSvc -.->|Fetch Data| ComplianceSvc
+    ReportSvc -.->|Fetch Data| RenewalSvc
+    ReportSvc -.->|Fetch Data| NotifSvc
+
+    NotifSvc -.->|Get Customer Info| CustomerSvc
+    ComplianceSvc -.->|Get Extinguisher Info| ExtSvc
+    RenewalSvc -.->|Get Extinguisher Info| ExtSvc
+
+    %% Background Jobs
+    CronJob[Cron Jobs<br/>Status Updates<br/>Notifications]
+    CronJob --> ExtSvc
+    CronJob --> NotifSvc
+
+    style UI fill:#3b82f6
+    style Gateway fill:#f59e0b
+    style AuthSvc fill:#10b981
+    style CustomerSvc fill:#10b981
+    style ExtSvc fill:#10b981
+    style NotifSvc fill:#10b981
+    style RenewalSvc fill:#10b981
+    style ComplianceSvc fill:#10b981
+    style ReportSvc fill:#10b981
+    style AuthDB fill:#6366f1
+    style CustomerDB fill:#6366f1
+    style ExtDB fill:#6366f1
+    style NotifDB fill:#6366f1
+    style RenewalDB fill:#6366f1
+    style ComplianceDB fill:#6366f1
+    style CronJob fill:#ef4444
