@@ -1,0 +1,212 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fems-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: auth-service
+        SERVICE_PORT: 3001
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fems_auth
+      JWT_SECRET: fems-dev-jwt-secret-change-in-production
+      JWT_EXPIRES_IN: 15m
+      REFRESH_TOKEN_EXPIRES_DAYS: 7
+      CORS_ORIGIN: http://localhost:5173
+      SERVICE_INTERNAL_KEY: dev-internal-service-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+
+  customer-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: customer-service
+        SERVICE_PORT: 3002
+    environment:
+      PORT: 3002
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fems_customers
+      JWT_SECRET: fems-dev-jwt-secret-change-in-production
+      CORS_ORIGIN: http://localhost:5173
+      SERVICE_INTERNAL_KEY: dev-internal-service-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3002:3002"
+
+  extinguisher-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: extinguisher-service
+        SERVICE_PORT: 3003
+    environment:
+      PORT: 3003
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fems_extinguishers
+      JWT_SECRET: fems-dev-jwt-secret-change-in-production
+      CORS_ORIGIN: http://localhost:5173
+      SERVICE_INTERNAL_KEY: dev-internal-service-key
+      CUSTOMER_SERVICE_URL: http://customer-service:3002
+      NOTIFICATION_SERVICE_URL: http://notification-service:3004
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3003:3003"
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: notification-service
+        SERVICE_PORT: 3004
+    environment:
+      PORT: 3004
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fems_notifications
+      JWT_SECRET: fems-dev-jwt-secret-change-in-production
+      CORS_ORIGIN: http://localhost:5173
+      SERVICE_INTERNAL_KEY: dev-internal-service-key
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      COMPLIANCE_SERVICE_URL: http://compliance-service:3006
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3004:3004"
+
+  renewal-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: renewal-service
+        SERVICE_PORT: 3005
+    environment:
+      PORT: 3005
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fems_renewals
+      JWT_SECRET: fems-dev-jwt-secret-change-in-production
+      CORS_ORIGIN: http://localhost:5173
+      SERVICE_INTERNAL_KEY: dev-internal-service-key
+      CUSTOMER_SERVICE_URL: http://customer-service:3002
+      EXTINGUISHER_SERVICE_URL: http://extinguisher-service:3003
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3005:3005"
+
+  compliance-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: compliance-service
+        SERVICE_PORT: 3006
+    environment:
+      PORT: 3006
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fems_compliance
+      JWT_SECRET: fems-dev-jwt-secret-change-in-production
+      CORS_ORIGIN: http://localhost:5173
+      SERVICE_INTERNAL_KEY: dev-internal-service-key
+      EXTINGUISHER_SERVICE_URL: http://extinguisher-service:3003
+      NOTIFICATION_SERVICE_URL: http://notification-service:3004
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3006:3006"
+
+  report-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args:
+        SERVICE_NAME: report-service
+        SERVICE_PORT: 3007
+    environment:
+      PORT: 3007
+      NODE_ENV: development
+      JWT_SECRET: fems-dev-jwt-secret-change-in-production
+      CORS_ORIGIN: http://localhost:5173
+      SERVICE_INTERNAL_KEY: dev-internal-service-key
+      CUSTOMER_SERVICE_URL: http://customer-service:3002
+      EXTINGUISHER_SERVICE_URL: http://extinguisher-service:3003
+      NOTIFICATION_SERVICE_URL: http://notification-service:3004
+      RENEWAL_SERVICE_URL: http://renewal-service:3005
+      COMPLIANCE_SERVICE_URL: http://compliance-service:3006
+    depends_on:
+      - auth-service
+      - customer-service
+      - extinguisher-service
+    ports:
+      - "3007:3007"
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gateway
+    environment:
+      PORT: 3000
+      CORS_ORIGIN: http://localhost:5173
+      AUTH_SERVICE_URL: http://auth-service:3001
+      CUSTOMER_SERVICE_URL: http://customer-service:3002
+      EXTINGUISHER_SERVICE_URL: http://extinguisher-service:3003
+      NOTIFICATION_SERVICE_URL: http://notification-service:3004
+      RENEWAL_SERVICE_URL: http://renewal-service:3005
+      COMPLIANCE_SERVICE_URL: http://compliance-service:3006
+      REPORT_SERVICE_URL: http://report-service:3007
+    depends_on:
+      - auth-service
+      - customer-service
+      - extinguisher-service
+      - notification-service
+      - renewal-service
+      - compliance-service
+      - report-service
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - api-gateway
+
+volumes:
+  postgres_data:

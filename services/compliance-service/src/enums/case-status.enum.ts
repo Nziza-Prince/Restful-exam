@@ -1,0 +1,7 @@
+export enum CaseStatus {
+  OPEN = 'OPEN',
+  WARNING_SENT = 'WARNING_SENT',
+  FINAL_WARNING = 'FINAL_WARNING',
+  ESCALATED = 'ESCALATED',
+  CLOSED = 'CLOSED',
+}

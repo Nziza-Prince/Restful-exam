@@ -1,0 +1,34 @@
+{
+  "name": "fems-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace=@fems/shared",
+    "dev:gateway": "npm run start:dev --workspace=@fems/api-gateway",
+    "dev:auth": "npm run start:dev --workspace=@fems/auth-service",
+    "dev:customer": "npm run start:dev --workspace=@fems/customer-service",
+    "dev:extinguisher": "npm run start:dev --workspace=@fems/extinguisher-service",
+    "dev:notification": "npm run start:dev --workspace=@fems/notification-service",
+    "dev:renewal": "npm run start:dev --workspace=@fems/renewal-service",
+    "dev:compliance": "npm run start:dev --workspace=@fems/compliance-service",
+    "dev:report": "npm run start:dev --workspace=@fems/report-service",
+    "stop:services": "node scripts/stop-services.mjs",
+    "dev:services": "npm run build:shared && concurrently -n gateway,auth,customer,extinguisher,notification,renewal,compliance,report -c blue,green,yellow,magenta,cyan,red,white,gray \"npm run dev:gateway\" \"npm run dev:auth\" \"npm run dev:customer\" \"npm run dev:extinguisher\" \"npm run dev:notification\" \"npm run dev:renewal\" \"npm run dev:compliance\" \"npm run dev:report\"",
+    "dev:all": "npm run build:shared && concurrently -n gateway,auth,customer,extinguisher,notification,renewal,compliance,report,frontend -c blue,green,yellow,magenta,cyan,red,white,gray,black \"npm run dev:gateway\" \"npm run dev:auth\" \"npm run dev:customer\" \"npm run dev:extinguisher\" \"npm run dev:notification\" \"npm run dev:renewal\" \"npm run dev:compliance\" \"npm run dev:report\" \"npm run dev --prefix frontend\"",
+    "install:all": "npm install",
+    "db:init": "node scripts/setup-db.mjs",
+    "seed": "node scripts/seed.mjs",
+    "test:apis": "node scripts/test-apis.mjs",
+    "test:auth": "npm test --workspace=@fems/auth-service"
+  },
+  "devDependencies": {
+    "bcrypt": "^6.0.0",
+    "concurrently": "^9.2.0",
+    "lodash": "^4.17.21",
+    "pg": "^8.21.0",
+    "playwright": "^1.60.0"
+  }
+}

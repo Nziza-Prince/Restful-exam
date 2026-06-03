@@ -1,0 +1,37 @@
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+ARG SERVICE_NAME
+ENV SERVICE_NAME=${SERVICE_NAME}
+
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json packages/shared/
+COPY services/${SERVICE_NAME}/package.json services/${SERVICE_NAME}/
+
+RUN npm ci --workspace=@fems/shared --workspace=@fems/${SERVICE_NAME} --include-workspace-root
+
+COPY packages/shared packages/shared
+COPY services/${SERVICE_NAME} services/${SERVICE_NAME}
+
+RUN npm run build --workspace=@fems/shared
+RUN npm run build --workspace=@fems/${SERVICE_NAME}
+
+FROM node:20-alpine
+WORKDIR /app
+
+ARG SERVICE_NAME
+ARG SERVICE_PORT
+ENV SERVICE_NAME=${SERVICE_NAME}
+ENV PORT=${SERVICE_PORT}
+
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json packages/shared/
+COPY services/${SERVICE_NAME}/package.json services/${SERVICE_NAME}/
+
+RUN npm ci --workspace=@fems/shared --workspace=@fems/${SERVICE_NAME} --include-workspace-root --omit=dev
+
+COPY --from=builder /app/packages/shared/dist packages/shared/dist
+COPY --from=builder /app/services/${SERVICE_NAME}/dist services/${SERVICE_NAME}/dist
+
+WORKDIR /app/services/${SERVICE_NAME}
+CMD ["node", "dist/main.js"]

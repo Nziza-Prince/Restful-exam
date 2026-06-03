@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Consistent focus outline */
+  :focus-visible {
+    @apply outline-none ring-2 ring-fire-700 ring-offset-2;
+  }
+}
+
+@layer components {
+  .page-container {
+    @apply mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8;
+  }
+
+  /* Skeleton shimmer for loading states */
+  .skeleton {
+    @apply animate-pulse rounded bg-zinc-200 dark:bg-zinc-800;
+  }
+}
