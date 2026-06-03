@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -13,13 +13,14 @@ import {
 } from 'recharts';
 import { StatCard } from '@/components/ui/Card';
 import { Card } from '@/components/ui/Card';
-import { PageHeader } from '@/components/ui/DataTable';
+import { Badge, DataTable, PageHeader, type Column } from '@/components/ui/DataTable';
 import { useAuth } from '@/hooks/useAuth';
 import { customerService } from '@/services/customerService';
 import { extinguisherService } from '@/services/extinguisherService';
+import type { ExtinguisherInspection } from '@/types';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchDashboardSummary, setDashboardCounts } from '@/store/slices/reportSlice';
-import { recordToChartData } from '@/utils';
+import { formatDateTime, recordToChartData } from '@/utils';
 
 // Cohesive chart palette — warm copper to amber to gold, no neon
 const CHART_COLORS = ['#b45309', '#d97706', '#f59e0b', '#78350f', '#92400e'];
@@ -39,10 +40,13 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 
 export function DashboardPage() {
   const dispatch = useAppDispatch();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isInspector } = useAuth();
   const { dashboard, totalCustomers, totalExtinguishers, loading } = useAppSelector(
     (state) => state.reports,
   );
+  const [inspectionRequests, setInspectionRequests] = useState<ExtinguisherInspection[]>([]);
+  const [inspectionLoading, setInspectionLoading] = useState(false);
+  const [inspectionError, setInspectionError] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -58,6 +62,26 @@ export function DashboardPage() {
             totalExtinguishers: extinguishers.meta.total,
           }),
         );
+      } else if (isInspector) {
+        setInspectionLoading(true);
+        setInspectionError('');
+        try {
+          const [extinguishers, inspections] = await Promise.all([
+            extinguisherService.listAll({ page: 1, limit: 1 }),
+            extinguisherService.listInspections({ page: 1, limit: 8 }),
+          ]);
+          setInspectionRequests(inspections.data);
+          dispatch(
+            setDashboardCounts({
+              totalCustomers: 0,
+              totalExtinguishers: extinguishers.meta.total,
+            }),
+          );
+        } catch (error) {
+          setInspectionError((error as Error).message);
+        } finally {
+          setInspectionLoading(false);
+        }
       } else {
         const extinguishers = await extinguisherService.listMine({ page: 1, limit: 1 });
         dispatch(
@@ -69,7 +93,7 @@ export function DashboardPage() {
       }
     };
     load();
-  }, [dispatch, isAdmin]);
+  }, [dispatch, isAdmin, isInspector]);
 
   const charts = dashboard?.charts;
   const expiredByMonth = recordToChartData(dashboard?.breakdown.expiredByMonth ?? {});
@@ -77,6 +101,66 @@ export function DashboardPage() {
   const complianceByStatus = recordToChartData(dashboard?.breakdown.complianceByStatus ?? {});
 
   const axisStyle = { fontSize: 11, fill: '#71717a', fontFamily: 'JetBrains Mono, monospace' };
+  const scheduledCount = inspectionRequests.filter((request) => request.status === 'SCHEDULED').length;
+  const completedCount = inspectionRequests.filter((request) => request.status === 'COMPLETED').length;
+  const inspectionColumns: Column<ExtinguisherInspection>[] = [
+    {
+      key: 'extinguisherId',
+      header: 'Extinguisher',
+      render: (row) => <span className="font-mono text-xs">{row.extinguisherId.slice(0, 8)}...</span>,
+    },
+    {
+      key: 'scheduledAt',
+      header: 'Date and Time',
+      render: (row) => <span className="font-mono text-xs">{formatDateTime(row.scheduledAt)}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => (
+        <Badge tone={row.status === 'COMPLETED' ? 'success' : row.status === 'CANCELLED' ? 'danger' : 'warning'}>
+          {row.status}
+        </Badge>
+      ),
+    },
+    {
+      key: 'notes',
+      header: 'Notes',
+      render: (row) => row.notes ?? '—',
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            className="rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            disabled={row.status === 'COMPLETED'}
+            onClick={async () => {
+              await extinguisherService.updateInspection(row.id, { status: 'COMPLETED' });
+              const inspections = await extinguisherService.listInspections({ page: 1, limit: 8 });
+              setInspectionRequests(inspections.data);
+            }}
+          >
+            Complete
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            disabled={row.status === 'CANCELLED'}
+            onClick={async () => {
+              await extinguisherService.updateInspection(row.id, { status: 'CANCELLED' });
+              const inspections = await extinguisherService.listInspections({ page: 1, limit: 8 });
+              setInspectionRequests(inspections.data);
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="page-container">
@@ -85,6 +169,8 @@ export function DashboardPage() {
         description={
           isAdmin
             ? 'Overview of customers, extinguishers, and compliance activity'
+            : isInspector
+            ? 'Inspection requests and maintenance workload'
             : 'Your fire extinguisher safety overview'
         }
       />
@@ -119,6 +205,12 @@ export function DashboardPage() {
               accent="ember"
             />
           </>
+        ) : isInspector ? (
+          <>
+            <StatCard label="Scheduled Requests" value={scheduledCount} accent="amber" />
+            <StatCard label="Completed Requests" value={completedCount} accent="green" />
+            <StatCard label="Monitoring" value="Active" accent="green" />
+          </>
         ) : (
           <>
             <StatCard label="My Extinguishers" value={totalExtinguishers} accent="fire" />
@@ -126,6 +218,21 @@ export function DashboardPage() {
           </>
         )}
       </div>
+
+      {isInspector && (
+        <Card title="Inspection Requests" description="Scheduled inspection requests from users and admins">
+          {inspectionError && (
+            <p className="mb-3 text-sm text-red-600 dark:text-red-400">{inspectionError}</p>
+          )}
+          <DataTable
+            columns={inspectionColumns}
+            data={inspectionRequests}
+            loading={inspectionLoading}
+            rowKey={(row) => row.id}
+            emptyMessage="No inspection requests found"
+          />
+        </Card>
+      )}
 
       {/* Admin charts */}
       {isAdmin && (

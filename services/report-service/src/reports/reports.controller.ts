@@ -89,6 +89,18 @@ export class ReportsController {
     return this.reportsService.totalStock({ ...query, adminId: user.sub });
   }
 
+  @Get('compliance-summary')
+  async complianceSummary(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: ReportQueryDto,
+    @Res() res: Response,
+  ) {
+    return this.sendReport(
+      await this.reportsService.complianceSummary({ ...query, adminId: user.sub }),
+      res,
+    );
+  }
+
   @Get('daily')
   async daily(@CurrentUser() user: JwtPayload, @Query() query: ReportQueryDto, @Res() res: Response) {
     return this.sendReport(

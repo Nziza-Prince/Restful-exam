@@ -29,11 +29,13 @@ Updated requirement endpoints:
 | PATCH | /extinguishers/:id | Admin | Update extinguisher |
 | DELETE | /extinguishers/:id | Admin | Remove extinguisher |
 | POST | /extinguishers/:id/inspections | Admin/User/Inspector | Schedule inspection and trigger notification when assigned |
+| GET | /extinguishers/inspections | Admin/Inspector | Paginated list of all scheduled inspection requests |
 | GET | /extinguishers/:id/inspections | Admin/Inspector | Paginated inspection list |
 | PATCH | /extinguishers/inspections/:inspectionId | Admin/Inspector | Update inspection status/assignment |
 | POST | /extinguishers/:id/maintenance | Admin/Inspector | Log actions taken, action date, and conditions noted |
 | GET | /extinguishers/:id/maintenance | Admin/Inspector | Paginated maintenance history |
 | GET | /reports/total-stock | Admin | Total extinguisher count |
+| GET | /reports/compliance-summary | Admin | Combined compliance report export with stock total, inspection status, expired extinguishers, and maintenance history |
 | GET | /reports/daily | Admin | Daily extinguisher report, export with ?format=csv/pdf |
 | GET | /reports/monthly | Admin | Monthly extinguisher report, export with ?format=csv/pdf |
 | GET | /reports/yearly | Admin | Yearly extinguisher report, export with ?format=csv/pdf |
@@ -90,11 +92,16 @@ Response includes `accessToken` and `refreshToken`.
 
 | Method | Path | Role | Description |
 |--------|------|------|-------------|
-| GET | /extinguishers | Admin | List with filters |
-| GET | /extinguishers/mine | Customer | Own extinguishers |
-| POST | /extinguishers | Admin | Create |
+| GET | /extinguishers | Admin/User/Inspector | Paginated list with filters |
+| GET | /extinguishers/mine | User | Own extinguishers |
+| GET | /extinguishers/:id | Admin/User/Inspector | View extinguisher details |
+| POST | /extinguishers | Admin | Register extinguisher |
 | PATCH | /extinguishers/:id | Admin | Update |
 | DELETE | /extinguishers/:id | Admin | Delete |
+| POST | /extinguishers/:id/inspections | Admin/User/Inspector | Schedule inspection with date/time |
+| GET | /extinguishers/inspections | Admin/Inspector | View all scheduled inspection requests |
+| PATCH | /extinguishers/inspections/:inspectionId | Admin/Inspector | Update inspection status |
+| POST | /extinguishers/:id/maintenance | Admin/Inspector | Log maintenance actions taken, action date, and conditions noted |
 
 Query params: `status`, `customerId`, `expiryFrom`, `expiryTo`, `search`, `page`, `limit`
 
@@ -128,11 +135,10 @@ Query params: `status`, `customerId`, `expiryFrom`, `expiryTo`, `search`, `page`
 
 | Method | Path | Role | Format |
 |--------|------|------|--------|
-| GET | /reports/expired-extinguishers | Admin | ?format=pdf\|xlsx\|csv |
-| GET | /reports/expiring-soon | Admin | ?format=pdf\|xlsx\|csv |
-| GET | /reports/customer-compliance | Admin | ?format=pdf\|xlsx\|csv |
-| GET | /reports/renewal-requests | Admin | ?format=pdf\|xlsx\|csv |
-| GET | /reports/notifications | Admin | ?format=pdf\|xlsx\|csv |
+| GET | /reports/compliance-summary | Admin | ?format=pdf\|xlsx\|csv |
+| GET | /reports/total-stock | Admin | JSON |
+| GET | /reports/inspection-status | Admin | ?format=pdf\|xlsx\|csv |
+| GET | /reports/maintenance-history | Admin | ?format=pdf\|xlsx\|csv |
 | GET | /reports/dashboard-summary | Admin | JSON |
 
 ## Settings

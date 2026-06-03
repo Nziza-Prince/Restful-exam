@@ -75,6 +75,31 @@ export interface FireExtinguisher {
   updatedAt: string;
 }
 
+export type InspectionStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+
+export interface ExtinguisherInspection {
+  id: string;
+  extinguisherId: string;
+  scheduledAt: string;
+  requestedBy: string;
+  inspectorId: string | null;
+  status: InspectionStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MaintenanceLog {
+  id: string;
+  extinguisherId: string;
+  actionsTaken: string;
+  actionDate: string;
+  conditionsNoted: string;
+  loggedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type RenewalRequestType = 'SERVICE' | 'REPLACEMENT' | 'INSPECTION';
 export type RenewalRequestStatus =
   | 'PENDING'
@@ -143,6 +168,7 @@ export interface DashboardSummary {
 export type ReportFormat = 'pdf' | 'xlsx' | 'csv';
 
 export type ReportType =
+  | 'compliance-summary'
   | 'expired-extinguishers'
   | 'expiring-soon'
   | 'customer-compliance'

@@ -86,6 +86,47 @@ export class ReportsService {
     };
   }
 
+  async complianceSummary(query: ReportQueryDto & { adminId?: string }): Promise<ExportResult | Record<string, unknown>[]> {
+    const [stock, expired, inspectionStatus, maintenanceHistory] = await Promise.all([
+      this.extinguisherClient.getExtinguishers({ createdBy: query.adminId }),
+      this.extinguisherClient.getExpired(this.params(query)),
+      this.extinguisherClient.getInspectionStatus({ adminId: query.adminId }),
+      this.extinguisherClient.getMaintenanceHistory({ adminId: query.adminId }),
+    ]);
+
+    const rows: Record<string, unknown>[] = [
+      {
+        section: 'Total number of extinguishers in stock',
+        metric: 'totalStock',
+        value: stock.length,
+      },
+      ...inspectionStatus.map((row) => ({
+        section: 'Inspection status',
+        metric: row.status ?? 'unknown',
+        value: row.count ?? 0,
+      })),
+      ...expired.map((row) => ({
+        section: 'Expired extinguishers',
+        serialNumber: row.serialNumber,
+        type: row.type,
+        location: row.location,
+        size: row.size ?? row.capacity,
+        expiryDate: row.expiryDate,
+        status: row.status,
+      })),
+      ...maintenanceHistory.map((row) => ({
+        section: 'Maintenance history',
+        extinguisherId: row.extinguisherId,
+        actionsTaken: row.actionsTaken,
+        actionDate: row.actionDate,
+        conditionsNoted: row.conditionsNoted,
+        loggedBy: row.loggedBy,
+      })),
+    ];
+
+    return this.respond('fire-extinguisher-compliance-report', rows, query.format ?? ReportFormat.CSV);
+  }
+
   async extinguisherPeriodReport(
     period: 'daily' | 'monthly' | 'yearly',
     query: ReportQueryDto & { adminId?: string },

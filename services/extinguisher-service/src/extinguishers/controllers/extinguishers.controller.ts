@@ -155,6 +155,20 @@ export class ExtinguishersController {
     });
   }
 
+  @Get('inspections')
+  @Roles(UserRole.ADMIN, UserRole.INSPECTOR)
+  @ApiOperation({ summary: 'List scheduled inspection requests' })
+  listAllInspections(@Query() query: PaginationQueryDto) {
+    return this.extinguishersService.listInspections(query.page ?? 1, query.limit ?? 10);
+  }
+
+  @Patch('inspections/:inspectionId')
+  @Roles(UserRole.ADMIN, UserRole.INSPECTOR)
+  @ApiOperation({ summary: 'Update inspection status or assignment' })
+  updateInspection(@Param('inspectionId') inspectionId: string, @Body() dto: UpdateInspectionDto) {
+    return this.extinguishersService.updateInspection(inspectionId, dto);
+  }
+
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.USER, UserRole.INSPECTOR)
   @ApiOperation({ summary: 'Get extinguisher by ID' })
@@ -236,13 +250,6 @@ export class ExtinguishersController {
   @ApiOperation({ summary: 'List inspections for an extinguisher' })
   listInspections(@Param('id') id: string, @Query() query: PaginationQueryDto) {
     return this.extinguishersService.listInspections(query.page ?? 1, query.limit ?? 10, id);
-  }
-
-  @Patch('inspections/:inspectionId')
-  @Roles(UserRole.ADMIN, UserRole.INSPECTOR)
-  @ApiOperation({ summary: 'Update inspection status or assignment' })
-  updateInspection(@Param('inspectionId') inspectionId: string, @Body() dto: UpdateInspectionDto) {
-    return this.extinguishersService.updateInspection(inspectionId, dto);
   }
 
   @Post(':id/maintenance')

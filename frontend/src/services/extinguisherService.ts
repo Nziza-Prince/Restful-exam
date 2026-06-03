@@ -1,7 +1,10 @@
 import apiClient from './apiClient';
 import type {
+  ExtinguisherInspection,
   ExtinguisherFilters,
   FireExtinguisher,
+  InspectionStatus,
+  MaintenanceLog,
   PaginatedResult,
 } from '@/types';
 
@@ -23,6 +26,17 @@ export type UpdateExtinguisherPayload = Partial<
 export interface ScheduleInspectionPayload {
   scheduledAt: string;
   notes?: string;
+}
+
+export interface UpdateInspectionPayload {
+  status?: InspectionStatus;
+  notes?: string;
+}
+
+export interface LogMaintenancePayload {
+  actionsTaken: string;
+  actionDate: string;
+  conditionsNoted: string;
 }
 
 export const extinguisherService = {
@@ -58,4 +72,22 @@ export const extinguisherService = {
 
   scheduleInspection: (id: string, payload: ScheduleInspectionPayload) =>
     apiClient.post(`/extinguishers/${id}/inspections`, payload).then((r) => r.data),
+
+  listInspections: (params: { page?: number; limit?: number } = {}) =>
+    apiClient
+      .get<PaginatedResult<ExtinguisherInspection>>('/extinguishers/inspections', { params })
+      .then((r) => r.data),
+
+  updateInspection: (id: string, payload: UpdateInspectionPayload) =>
+    apiClient
+      .patch<ExtinguisherInspection>(`/extinguishers/inspections/${id}`, payload)
+      .then((r) => r.data),
+
+  logMaintenance: (id: string, payload: LogMaintenancePayload) =>
+    apiClient.post<MaintenanceLog>(`/extinguishers/${id}/maintenance`, payload).then((r) => r.data),
+
+  listMaintenance: (id: string, params: { page?: number; limit?: number } = {}) =>
+    apiClient
+      .get<PaginatedResult<MaintenanceLog>>(`/extinguishers/${id}/maintenance`, { params })
+      .then((r) => r.data),
 };
