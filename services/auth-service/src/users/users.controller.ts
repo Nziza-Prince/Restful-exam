@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -9,14 +9,15 @@ import {
   CurrentUser,
   JwtAuthGuard,
   JwtPayload,
-  PaginationQueryDto,
   Roles,
   RolesGuard,
   UserResponseDto,
   UserRole,
 } from '@fems/shared';
 import { UsersService } from './users.service';
+import { CreateUserDto, UpdateUserDto } from './dto/admin-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiTags('users')
@@ -48,7 +49,31 @@ export class UsersController {
   @Get()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'List all users (admin)' })
-  findAll(@Query() query: PaginationQueryDto) {
-    return this.usersService.findAll(query.page ?? 1, query.limit ?? 10);
+  findAll(@Query() query: ListUsersQueryDto) {
+    return this.usersService.findAll(query.page ?? 1, query.limit ?? 10, query.search);
+  }
+
+  @Post()
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create user (admin)' })
+  @ApiOkResponse({ type: UserResponseDto })
+  create(@Body() dto: CreateUserDto) {
+    return this.usersService.createByAdmin(dto);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update user (admin)' })
+  @ApiOkResponse({ type: UserResponseDto })
+  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+    return this.usersService.updateByAdmin(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Delete user (admin)' })
+  async remove(@Param('id') id: string) {
+    await this.usersService.deleteById(id);
+    return { success: true };
   }
 }

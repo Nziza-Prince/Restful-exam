@@ -9,10 +9,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { paginate, PaginatedResult, UserRole } from '@fems/shared';
-import { Repository } from 'typeorm';
+import { ILike, Not, Repository } from 'typeorm';
 import { RegisterDto } from '../auth/dto/register.dto';
 import { User } from '../entities/user.entity';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { CreateUserDto, UpdateUserDto } from './dto/admin-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 const BCRYPT_ROUNDS = 12;
@@ -33,7 +34,6 @@ export class UsersService {
     }
 
     const hashed = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const role = dto.role === UserRole.INSPECTOR ? UserRole.INSPECTOR : UserRole.USER;
     const firstName = dto.firstName.trim();
     const lastName = dto.lastName.trim();
     const fullName = `${firstName} ${lastName}`.trim();
@@ -43,31 +43,29 @@ export class UsersService {
       fullName,
       email: dto.email.toLowerCase(),
       password: hashed,
-      role,
+      role: UserRole.USER,
     });
     const saved = await this.usersRepo.save(user);
 
-    if (role === UserRole.USER) {
-      try {
-        const customerServiceUrl = process.env.CUSTOMER_SERVICE_URL || 'http://localhost:3002';
-        const serviceKey = process.env.SERVICE_INTERNAL_KEY || 'dev-internal-service-key';
-        await (globalThis as any).fetch(`${customerServiceUrl}/api/internal/customers`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Service-Key': serviceKey,
-          },
-          body: JSON.stringify({
-            fullName,
-            email: dto.email.toLowerCase(),
-            nationalId: `NAT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-            phone: '0780000000',
-            address: 'Kigali, Rwanda',
-          }),
-        });
-      } catch (err) {
-        console.error('Failed to sync customer profile on registration:', err);
-      }
+    try {
+      const customerServiceUrl = process.env.CUSTOMER_SERVICE_URL || 'http://localhost:3002';
+      const serviceKey = process.env.SERVICE_INTERNAL_KEY || 'dev-internal-service-key';
+      await (globalThis as any).fetch(`${customerServiceUrl}/api/internal/customers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Service-Key': serviceKey,
+        },
+        body: JSON.stringify({
+          fullName,
+          email: dto.email.toLowerCase(),
+          nationalId: `NAT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+          phone: '0780000000',
+          address: 'Kigali, Rwanda',
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to sync customer profile on registration:', err);
     }
 
     return this.sanitize(saved);
@@ -144,8 +142,20 @@ export class UsersService {
   async findAll(
     page: number,
     limit: number,
+    search?: string,
   ): Promise<PaginatedResult<Omit<User, 'password'>>> {
+    const normalizedSearch = search?.trim();
+    const where = normalizedSearch
+      ? [
+          { firstName: ILike(`%${normalizedSearch}%`) },
+          { lastName: ILike(`%${normalizedSearch}%`) },
+          { fullName: ILike(`%${normalizedSearch}%`) },
+          { email: ILike(`%${normalizedSearch}%`) },
+        ]
+      : undefined;
+
     const [users, total] = await this.usersRepo.findAndCount({
+      where,
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
@@ -162,6 +172,71 @@ export class UsersService {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException('User not found');
     return this.sanitize(user);
+  }
+
+  async createByAdmin(dto: CreateUserDto): Promise<Omit<User, 'password'>> {
+    const existing = await this.usersRepo.findOne({
+      where: { email: dto.email.toLowerCase() },
+    });
+    if (existing) throw new ConflictException('Email already registered');
+
+    const firstName = dto.firstName.trim();
+    const lastName = dto.lastName.trim();
+    const fullName = `${firstName} ${lastName}`.trim();
+    const user = this.usersRepo.create({
+      firstName,
+      lastName,
+      fullName,
+      email: dto.email.toLowerCase(),
+      password: await bcrypt.hash(dto.password, BCRYPT_ROUNDS),
+      role: dto.role ?? UserRole.USER,
+    });
+
+    return this.sanitize(await this.usersRepo.save(user));
+  }
+
+  async updateByAdmin(id: string, dto: UpdateUserDto): Promise<Omit<User, 'password'>> {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('User not found');
+
+    if (dto.email && dto.email.toLowerCase() !== user.email) {
+      const duplicate = await this.usersRepo.findOne({
+        where: { email: dto.email.toLowerCase(), id: Not(id) },
+      });
+      if (duplicate) throw new ConflictException('Email already registered');
+      user.email = dto.email.toLowerCase();
+    }
+
+    if (dto.firstName !== undefined) user.firstName = dto.firstName.trim();
+    if (dto.lastName !== undefined) user.lastName = dto.lastName.trim();
+    user.fullName = `${user.firstName} ${user.lastName}`.trim() || user.fullName;
+    if (dto.role !== undefined && dto.role !== user.role) {
+      if (user.role === UserRole.ADMIN && dto.role !== UserRole.ADMIN) {
+        await this.ensureAnotherAdminExists(id, 'Cannot remove the last admin user');
+      }
+      user.role = dto.role;
+    }
+    if (dto.password) user.password = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+
+    return this.sanitize(await this.usersRepo.save(user));
+  }
+
+  async deleteById(id: string): Promise<void> {
+    const user = await this.usersRepo.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (user.role === UserRole.ADMIN) {
+      await this.ensureAnotherAdminExists(id, 'Cannot delete the last admin user');
+    }
+
+    await this.usersRepo.remove(user);
+  }
+
+  private async ensureAnotherAdminExists(id: string, message: string): Promise<void> {
+    const remainingAdmins = await this.usersRepo.count({
+      where: { role: UserRole.ADMIN, id: Not(id) },
+    });
+    if (remainingAdmins === 0) throw new BadRequestException(message);
   }
 
   async createPending(email: string, fullName: string): Promise<void> {

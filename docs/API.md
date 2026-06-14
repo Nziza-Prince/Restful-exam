@@ -15,7 +15,7 @@ Updated requirement endpoints:
 
 | Method | Path | Role | Purpose |
 |---|---|---|---|
-| POST | /auth/register | Public | Register with firstName, lastName, email, password, optional role=user/inspector |
+| POST | /auth/register | Public | Register with firstName, lastName, email, password; role defaults to user/customer |
 | POST | /auth/login | Public | Login and receive JWT access + refresh tokens |
 | POST | /auth/logout | Authenticated | Revoke refresh token |
 | POST | /auth/forgot-password | Public | Generate password reset token |

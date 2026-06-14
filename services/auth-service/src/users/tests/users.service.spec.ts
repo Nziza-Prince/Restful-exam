@@ -33,6 +33,7 @@ describe('UsersService', () => {
       create: jest.fn(),
       save: jest.fn(),
       remove: jest.fn(),
+      count: jest.fn(),
       findAndCount: jest.fn(),
     } as unknown as jest.Mocked<Repository<User>>;
 

@@ -1,10 +1,9 @@
 import { type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/Button';
-import { Input, Select } from '@/components/ui/Input';
+import { Input } from '@/components/ui/Input';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearAuthError, register } from '@/store/slices/authSlice';
-import type { UserRole } from '@/types';
 
 export function RegisterPage() {
   const dispatch = useAppDispatch();
@@ -15,12 +14,11 @@ export function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<UserRole>('user');
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     dispatch(clearAuthError());
-    const result = await dispatch(register({ firstName, lastName, email, password, role }));
+    const result = await dispatch(register({ firstName, lastName, email, password }));
     if (register.fulfilled.match(result)) navigate('/login');
   };
 
@@ -93,15 +91,6 @@ export function RegisterPage() {
             {showPassword ? 'Hide' : 'Show'}
           </button>
         </div>
-        <Select
-          label="Account role"
-          value={role}
-          onChange={(e) => setRole(e.target.value as UserRole)}
-          options={[
-            { value: 'user', label: 'Facility user' },
-            { value: 'inspector', label: 'Inspector' },
-          ]}
-        />
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-xs text-zinc-500">

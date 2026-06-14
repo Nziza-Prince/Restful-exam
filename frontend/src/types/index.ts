@@ -27,7 +27,6 @@ export interface RegisterPayload {
   lastName: string;
   email: string;
   password: string;
-  role?: UserRole;
 }
 
 export interface PaginationMeta {
